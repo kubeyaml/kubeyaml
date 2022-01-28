@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: jupyterhub
+    chart: jupyterhub-1.2.0
+    component: proxy-api
+    heritage: Helm
+    release: RELEASE-NAME
+  name: proxy-api
+spec:
+  ports:
+  - port: 8001
+    targetPort: api
+  selector:
+    app: jupyterhub
+    component: proxy
+    release: RELEASE-NAME

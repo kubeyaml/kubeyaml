@@ -1,0 +1,17 @@
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  labels:
+    app: jupyterhub
+    chart: jupyterhub-1.2.0
+    component: user-scheduler
+    heritage: Helm
+    release: RELEASE-NAME
+  name: user-scheduler
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: jupyterhub
+      component: user-scheduler
+      release: RELEASE-NAME

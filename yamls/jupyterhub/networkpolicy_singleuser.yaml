@@ -1,0 +1,45 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  labels:
+    app: jupyterhub
+    chart: jupyterhub-1.2.0
+    component: singleuser
+    heritage: Helm
+    release: RELEASE-NAME
+  name: singleuser
+spec:
+  egress:
+  - ports:
+    - port: 8081
+    to:
+    - podSelector:
+        matchLabels:
+          app: jupyterhub
+          component: hub
+          release: RELEASE-NAME
+  - ports:
+    - port: 53
+      protocol: UDP
+    - port: 53
+      protocol: TCP
+  - to:
+    - ipBlock:
+        cidr: 0.0.0.0/0
+        except:
+        - 169.254.169.254/32
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          hub.jupyter.org/network-access-singleuser: "true"
+    ports:
+    - port: notebook-port
+  podSelector:
+    matchLabels:
+      app: jupyterhub
+      component: singleuser-server
+      release: RELEASE-NAME
+  policyTypes:
+  - Ingress
+  - Egress

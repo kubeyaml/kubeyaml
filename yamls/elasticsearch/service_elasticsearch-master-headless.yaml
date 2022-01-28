@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    service.alpha.kubernetes.io/tolerate-unready-endpoints: "true"
+  labels:
+    app: elasticsearch-master
+    chart: elasticsearch
+    heritage: Helm
+    release: RELEASE-NAME
+  name: elasticsearch-master-headless
+spec:
+  clusterIP: None
+  ports:
+  - name: http
+    port: 9200
+  - name: transport
+    port: 9300
+  publishNotReadyAddresses: true
+  selector:
+    app: elasticsearch-master

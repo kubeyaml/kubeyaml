@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: jupyterhub
+    chart: jupyterhub-1.2.0
+    component: user-scheduler
+    heritage: Helm
+    release: RELEASE-NAME
+  name: user-scheduler
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: jupyterhub
+      component: user-scheduler
+      release: RELEASE-NAME
+  template:
+    metadata:
+      annotations:
+        checksum/config-map: 8736bc9c8b4a03ada3b101535790ee7910b280c40d339d500c4535879d1fb5a5
+      labels:
+        app: jupyterhub
+        component: user-scheduler
+        release: RELEASE-NAME
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: hub.jupyter.org/node-purpose
+                operator: In
+                values:
+                - core
+            weight: 100
+      containers:
+      - command:
+        - /usr/local/bin/kube-scheduler
+        - --config=/etc/user-scheduler/config.yaml
+        - --authentication-skip-lookup=true
+        - --v=4
+        image: k8s.gcr.io/kube-scheduler:v1.19.13
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 10251
+          initialDelaySeconds: 15
+        name: kube-scheduler
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 10251
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsGroup: 65534
+          runAsUser: 65534
+        volumeMounts:
+        - mountPath: /etc/user-scheduler
+          name: config
+      nodeSelector: {}
+      serviceAccountName: user-scheduler
+      tolerations:
+      - effect: NoSchedule
+        key: hub.jupyter.org/dedicated
+        operator: Equal
+        value: core
+      - effect: NoSchedule
+        key: hub.jupyter.org_dedicated
+        operator: Equal
+        value: core
+      volumes:
+      - configMap:
+          name: user-scheduler
+        name: config

@@ -1,0 +1,125 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  annotations:
+    majorVersion: "1"
+  labels:
+    app.kubernetes.io/component: opensearch-cluster-master
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: opensearch
+    app.kubernetes.io/version: 1.2.4
+    helm.sh/chart: opensearch-1.7.1
+  name: opensearch-cluster-master
+spec:
+  podManagementPolicy: Parallel
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: RELEASE-NAME
+      app.kubernetes.io/name: opensearch
+  serviceName: opensearch-cluster-master-headless
+  template:
+    metadata:
+      annotations:
+        configchecksum: 47d8027f30324645af47610c01752ac3cb06836b7f682f4d7badfd153297fcf
+      labels:
+        app.kubernetes.io/component: opensearch-cluster-master
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: opensearch
+        app.kubernetes.io/version: 1.2.4
+        helm.sh/chart: opensearch-1.7.1
+      name: opensearch-cluster-master
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/instance
+                  operator: In
+                  values:
+                  - RELEASE-NAME
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                  - opensearch
+              topologyKey: kubernetes.io/hostname
+            weight: 1
+      containers:
+      - env:
+        - name: node.name
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: cluster.initial_master_nodes
+          value: opensearch-cluster-master-0,opensearch-cluster-master-1,opensearch-cluster-master-2,
+        - name: discovery.seed_hosts
+          value: opensearch-cluster-master-headless
+        - name: cluster.name
+          value: opensearch-cluster
+        - name: network.host
+          value: 0.0.0.0
+        - name: OPENSEARCH_JAVA_OPTS
+          value: -Xmx512M -Xms512M
+        - name: node.roles
+          value: master,ingest,data,remote_cluster_client,
+        image: opensearchproject/opensearch:1.2.4
+        imagePullPolicy: IfNotPresent
+        name: opensearch
+        ports:
+        - containerPort: 9200
+          name: http
+        - containerPort: 9300
+          name: transport
+        resources:
+          requests:
+            cpu: 1000m
+            memory: 100Mi
+        securityContext:
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
+          runAsUser: 1000
+        volumeMounts:
+        - mountPath: /usr/share/opensearch/data
+          name: opensearch-cluster-master
+        - mountPath: /usr/share/opensearch/config/opensearch.yml
+          name: config
+          subPath: opensearch.yml
+      enableServiceLinks: true
+      initContainers:
+      - args:
+        - chown -R 1000:1000 /usr/share/opensearch/data
+        command:
+        - sh
+        - -c
+        image: busybox:latest
+        name: fsgroup-volume
+        securityContext:
+          runAsUser: 0
+        volumeMounts:
+        - mountPath: /usr/share/opensearch/data
+          name: opensearch-cluster-master
+      securityContext:
+        fsGroup: 1000
+        runAsUser: 1000
+      terminationGracePeriodSeconds: 120
+      volumes:
+      - configMap:
+          name: opensearch-cluster-master-config
+        name: config
+  updateStrategy:
+    type: RollingUpdate
+  volumeClaimTemplates:
+  - metadata:
+      name: opensearch-cluster-master
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 8Gi

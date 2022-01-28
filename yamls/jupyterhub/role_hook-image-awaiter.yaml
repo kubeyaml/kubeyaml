@@ -1,0 +1,22 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+    helm.sh/hook-weight: "0"
+  labels:
+    app: jupyterhub
+    chart: jupyterhub-1.2.0
+    component: image-puller
+    heritage: Helm
+    hub.jupyter.org/deletable: "true"
+    release: RELEASE-NAME
+  name: hook-image-awaiter
+rules:
+- apiGroups:
+  - apps
+  resources:
+  - daemonsets
+  verbs:
+  - get

@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    app: jupyterhub
+    chart: jupyterhub-1.2.0
+    component: continuous-image-puller
+    heritage: Helm
+    release: RELEASE-NAME
+  name: continuous-image-puller
+spec:
+  selector:
+    matchLabels:
+      app: jupyterhub
+      component: continuous-image-puller
+      release: RELEASE-NAME
+  template:
+    metadata:
+      labels:
+        app: jupyterhub
+        component: continuous-image-puller
+        release: RELEASE-NAME
+    spec:
+      automountServiceAccountToken: false
+      containers:
+      - image: k8s.gcr.io/pause:3.5
+        name: pause
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsGroup: 65534
+          runAsUser: 65534
+      initContainers:
+      - command:
+        - /bin/sh
+        - -c
+        - echo "Pulling complete"
+        image: jupyterhub/k8s-network-tools:1.2.0
+        name: image-pull-metadata-block
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsGroup: 65534
+          runAsUser: 65534
+      - command:
+        - /bin/sh
+        - -c
+        - echo "Pulling complete"
+        image: jupyterhub/k8s-singleuser-sample:1.2.0
+        name: image-pull-singleuser
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsGroup: 65534
+          runAsUser: 65534
+      nodeSelector: {}
+      terminationGracePeriodSeconds: 0
+      tolerations:
+      - effect: NoSchedule
+        key: hub.jupyter.org/dedicated
+        operator: Equal
+        value: user
+      - effect: NoSchedule
+        key: hub.jupyter.org_dedicated
+        operator: Equal
+        value: user
+  updateStrategy:
+    rollingUpdate:
+      maxUnavailable: 100%
+    type: RollingUpdate

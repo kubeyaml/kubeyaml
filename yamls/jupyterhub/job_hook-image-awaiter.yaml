@@ -1,0 +1,50 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+    helm.sh/hook-weight: "10"
+  labels:
+    app: jupyterhub
+    chart: jupyterhub-1.2.0
+    component: image-puller
+    heritage: Helm
+    hub.jupyter.org/deletable: "true"
+    release: RELEASE-NAME
+  name: hook-image-awaiter
+spec:
+  template:
+    metadata:
+      labels:
+        app: jupyterhub
+        component: image-puller
+        release: RELEASE-NAME
+    spec:
+      containers:
+      - command:
+        - /image-awaiter
+        - -ca-path=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        - -auth-token-path=/var/run/secrets/kubernetes.io/serviceaccount/token
+        - -api-server-address=https://kubernetes.default.svc:$(KUBERNETES_SERVICE_PORT)
+        - -namespace=default
+        - -daemonset=hook-image-puller
+        - -pod-scheduling-wait-duration=10
+        image: jupyterhub/k8s-image-awaiter:1.2.0
+        name: hook-image-awaiter
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsGroup: 65534
+          runAsUser: 65534
+      nodeSelector: {}
+      restartPolicy: Never
+      serviceAccountName: hook-image-awaiter
+      tolerations:
+      - effect: NoSchedule
+        key: hub.jupyter.org/dedicated
+        operator: Equal
+        value: core
+      - effect: NoSchedule
+        key: hub.jupyter.org_dedicated
+        operator: Equal
+        value: core

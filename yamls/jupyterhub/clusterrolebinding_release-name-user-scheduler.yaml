@@ -1,0 +1,18 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app: jupyterhub
+    chart: jupyterhub-1.2.0
+    component: user-scheduler
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-user-scheduler
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: RELEASE-NAME-user-scheduler
+subjects:
+- kind: ServiceAccount
+  name: user-scheduler
+  namespace: default
