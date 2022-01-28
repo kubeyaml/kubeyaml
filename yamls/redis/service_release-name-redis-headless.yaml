@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/instance: RELEASE-NAME
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: redis
-    helm.sh/chart: redis-16.2.0
+    helm.sh/chart: redis-16.2.1
   name: RELEASE-NAME-redis-headless
   namespace: default
 spec:

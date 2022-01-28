@@ -1,3 +1,0 @@
-helmCharts:
-- name: elasticsearch
-  repo: https://helm.elastic.co

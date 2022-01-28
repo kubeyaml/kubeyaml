@@ -1,0 +1,17 @@
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: cockroachdb
+    helm.sh/chart: cockroachdb-7.0.0
+  name: RELEASE-NAME-cockroachdb-budget
+  namespace: default
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: cockroachdb
+      app.kubernetes.io/instance: RELEASE-NAME
+      app.kubernetes.io/name: cockroachdb

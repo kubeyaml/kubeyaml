@@ -21,7 +21,7 @@ spec:
     metadata:
       annotations:
         checksum/config-map: e2407bf8968a66be17c02a45b3a07fa55bd1548931d0c2dde5b599fda028b6ea
-        checksum/secret: f691ca1966e74b7569b4bf5250718d042ab34896f9d1dd370d2a82738f70da96
+        checksum/secret: f89a203b949e370cbe840e5802215b1747d57426f14019a548d6259bf3067a03
       labels:
         app: jupyterhub
         component: hub

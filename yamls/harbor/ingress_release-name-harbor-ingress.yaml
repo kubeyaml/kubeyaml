@@ -1,0 +1,65 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    ingress.kubernetes.io/proxy-body-size: "0"
+    ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  labels:
+    app: harbor
+    chart: harbor
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-harbor-ingress
+spec:
+  rules:
+  - host: core.harbor.domain
+    http:
+      paths:
+      - backend:
+          service:
+            name: RELEASE-NAME-harbor-portal
+            port:
+              number: 80
+        path: /
+        pathType: Prefix
+      - backend:
+          service:
+            name: RELEASE-NAME-harbor-core
+            port:
+              number: 80
+        path: /api/
+        pathType: Prefix
+      - backend:
+          service:
+            name: RELEASE-NAME-harbor-core
+            port:
+              number: 80
+        path: /service/
+        pathType: Prefix
+      - backend:
+          service:
+            name: RELEASE-NAME-harbor-core
+            port:
+              number: 80
+        path: /v2
+        pathType: Prefix
+      - backend:
+          service:
+            name: RELEASE-NAME-harbor-core
+            port:
+              number: 80
+        path: /chartrepo/
+        pathType: Prefix
+      - backend:
+          service:
+            name: RELEASE-NAME-harbor-core
+            port:
+              number: 80
+        path: /c/
+        pathType: Prefix
+  tls:
+  - hosts:
+    - core.harbor.domain
+    secretName: RELEASE-NAME-harbor-ingress

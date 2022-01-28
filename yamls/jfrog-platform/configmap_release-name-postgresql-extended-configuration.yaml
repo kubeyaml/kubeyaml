@@ -1,0 +1,14 @@
+apiVersion: v1
+data:
+  override.conf: |
+    max_connections = 1000
+    max_wal_size = '1000MB'
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: postgresql
+    helm.sh/chart: postgresql-10.3.18
+  name: RELEASE-NAME-postgresql-extended-configuration
+  namespace: default

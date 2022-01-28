@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: RELEASE-NAME-nats-box
+    chart: nats-0.12.1
+  name: RELEASE-NAME-nats-box
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: RELEASE-NAME-nats-box
+  template:
+    metadata:
+      labels:
+        app: RELEASE-NAME-nats-box
+    spec:
+      containers:
+      - command:
+        - tail
+        - -f
+        - /dev/null
+        env:
+        - name: NATS_URL
+          value: RELEASE-NAME-nats
+        image: natsio/nats-box:0.8.0
+        imagePullPolicy: IfNotPresent
+        name: nats-box
+        resources: null
+        volumeMounts: null
+      volumes: null

@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: oauth2-proxy
+    app.kubernetes.io/component: authentication-proxy
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: oauth2-proxy
+    app.kubernetes.io/part-of: oauth2-proxy
+    app.kubernetes.io/version: 7.2.0
+    helm.sh/chart: oauth2-proxy-5.0.6
+  name: RELEASE-NAME-oauth2-proxy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: RELEASE-NAME
+      app.kubernetes.io/name: oauth2-proxy
+  template:
+    metadata:
+      annotations:
+        checksum/config: 687c105f911aa64f8ba84b8f09504b93b33292d5d63f9d6f49d989e0ff681ee4
+        checksum/config-emails: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
+        checksum/google-secret: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+        checksum/redis-secret: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+        checksum/secret: f9a19fd1f3ef925928d660a7949cbeed7e9b68206a502d660721cca909382030
+      labels:
+        app: oauth2-proxy
+        app.kubernetes.io/component: authentication-proxy
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: oauth2-proxy
+        app.kubernetes.io/part-of: oauth2-proxy
+        app.kubernetes.io/version: 7.2.0
+        helm.sh/chart: oauth2-proxy-5.0.6
+    spec:
+      containers:
+      - args:
+        - --http-address=0.0.0.0:4180
+        - --metrics-address=0.0.0.0:44180
+        - --config=/etc/oauth2_proxy/oauth2_proxy.cfg
+        env:
+        - name: OAUTH2_PROXY_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              key: client-id
+              name: RELEASE-NAME-oauth2-proxy
+        - name: OAUTH2_PROXY_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: client-secret
+              name: RELEASE-NAME-oauth2-proxy
+        - name: OAUTH2_PROXY_COOKIE_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: cookie-secret
+              name: RELEASE-NAME-oauth2-proxy
+        image: quay.io/oauth2-proxy/oauth2-proxy:v7.2.0
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 0
+          timeoutSeconds: 1
+        name: oauth2-proxy
+        ports:
+        - containerPort: 4180
+          name: http
+          protocol: TCP
+        - containerPort: 44180
+          name: metrics
+          protocol: TCP
+        readinessProbe:
+          httpGet:
+            path: /ping
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources: {}
+        volumeMounts:
+        - mountPath: /etc/oauth2_proxy
+          name: configmain
+      serviceAccountName: RELEASE-NAME-oauth2-proxy
+      tolerations: []
+      volumes:
+      - configMap:
+          defaultMode: 420
+          name: RELEASE-NAME-oauth2-proxy
+        name: configmain

@@ -1,0 +1,120 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    app: RELEASE-NAME-filebeat
+    chart: filebeat-7.16.3
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-filebeat
+spec:
+  selector:
+    matchLabels:
+      app: RELEASE-NAME-filebeat
+      release: RELEASE-NAME
+  template:
+    metadata:
+      annotations:
+        configChecksum: c11bb90be100044474c02882878624d035389957961953a8bf85cb95919c34f
+      labels:
+        app: RELEASE-NAME-filebeat
+        chart: filebeat-7.16.3
+        heritage: Helm
+        release: RELEASE-NAME
+      name: RELEASE-NAME-filebeat
+    spec:
+      affinity: {}
+      containers:
+      - args:
+        - -e
+        - -E
+        - http.enabled=true
+        env:
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        envFrom: []
+        image: docker.elastic.co/beats/filebeat:7.16.3
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - |
+              #!/usr/bin/env bash -e
+              curl --fail 127.0.0.1:5066
+          failureThreshold: 3
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+        name: filebeat
+        readinessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - |
+              #!/usr/bin/env bash -e
+              filebeat test output
+          failureThreshold: 3
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 200Mi
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        securityContext:
+          privileged: false
+          runAsUser: 0
+        volumeMounts:
+        - mountPath: /usr/share/filebeat/filebeat.yml
+          name: filebeat-config
+          readOnly: true
+          subPath: filebeat.yml
+        - mountPath: /usr/share/filebeat/data
+          name: data
+        - mountPath: /var/lib/docker/containers
+          name: varlibdockercontainers
+          readOnly: true
+        - mountPath: /var/log
+          name: varlog
+          readOnly: true
+        - mountPath: /var/run/docker.sock
+          name: varrundockersock
+          readOnly: true
+      nodeSelector: {}
+      serviceAccountName: RELEASE-NAME-filebeat
+      terminationGracePeriodSeconds: 30
+      tolerations: []
+      volumes:
+      - configMap:
+          defaultMode: 384
+          name: RELEASE-NAME-filebeat-daemonset-config
+        name: filebeat-config
+      - hostPath:
+          path: /var/lib/RELEASE-NAME-filebeat-default-data
+          type: DirectoryOrCreate
+        name: data
+      - hostPath:
+          path: /var/lib/docker/containers
+        name: varlibdockercontainers
+      - hostPath:
+          path: /var/log
+        name: varlog
+      - hostPath:
+          path: /var/run/docker.sock
+        name: varrundockersock
+  updateStrategy:
+    rollingUpdate:
+      maxUnavailable: 1
+    type: RollingUpdate

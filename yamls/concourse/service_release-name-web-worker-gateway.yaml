@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: RELEASE-NAME-web
+    chart: concourse-16.1.16
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-web-worker-gateway
+spec:
+  ports:
+  - name: worker-gateway
+    port: 2222
+    targetPort: tsa
+  selector:
+    app: RELEASE-NAME-web
+  type: ClusterIP

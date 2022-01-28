@@ -1,0 +1,22 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  annotations:
+    meta.helm.sh/release-name: RELEASE-NAME
+    meta.helm.sh/release-namespace: default
+  labels:
+    app: RELEASE-NAME-reloader
+    app.kubernetes.io/managed-by: Helm
+    chart: reloader-v0.0.104
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-reloader-role-binding
+  namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: RELEASE-NAME-reloader-role
+subjects:
+- kind: ServiceAccount
+  name: RELEASE-NAME-reloader
+  namespace: default

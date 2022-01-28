@@ -1,0 +1,170 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: RELEASE-NAME-worker
+    chart: concourse-16.1.16
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-worker
+spec:
+  podManagementPolicy: Parallel
+  replicas: 2
+  selector:
+    matchLabels:
+      app: RELEASE-NAME-worker
+      release: RELEASE-NAME
+  serviceName: RELEASE-NAME-worker
+  template:
+    metadata:
+      annotations:
+        checksum/secrets: 44749b8c515577a6f7ba7768fe2d007164fc921bd8d94b2cda0890deadfd9354
+      labels:
+        app: RELEASE-NAME-worker
+        release: RELEASE-NAME
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: RELEASE-NAME-worker
+                  release: RELEASE-NAME
+              topologyKey: kubernetes.io/hostname
+            weight: 100
+      containers:
+      - args:
+        - worker
+        env:
+        - name: CONCOURSE_SWEEP_INTERVAL
+          value: 30s
+        - name: CONCOURSE_CONNECTION_DRAIN_TIMEOUT
+          value: 1h
+        - name: CONCOURSE_HEALTHCHECK_BIND_IP
+          value: 0.0.0.0
+        - name: CONCOURSE_HEALTHCHECK_BIND_PORT
+          value: "8888"
+        - name: CONCOURSE_HEALTHCHECK_TIMEOUT
+          value: 5s
+        - name: CONCOURSE_DEBUG_BIND_IP
+          value: 127.0.0.1
+        - name: CONCOURSE_DEBUG_BIND_PORT
+          value: "7776"
+        - name: CONCOURSE_WORK_DIR
+          value: /concourse-work-dir
+        - name: CONCOURSE_BIND_IP
+          value: 127.0.0.1
+        - name: CONCOURSE_BIND_PORT
+          value: "7777"
+        - name: CONCOURSE_LOG_LEVEL
+          value: info
+        - name: CONCOURSE_TSA_HOST
+          value: RELEASE-NAME-web-worker-gateway:2222
+        - name: CONCOURSE_TSA_PUBLIC_KEY
+          value: /concourse-keys/host_key.pub
+        - name: CONCOURSE_TSA_WORKER_PRIVATE_KEY
+          value: /concourse-keys/worker_key
+        - name: CONCOURSE_BAGGAGECLAIM_LOG_LEVEL
+          value: info
+        - name: CONCOURSE_BAGGAGECLAIM_BIND_IP
+          value: 127.0.0.1
+        - name: CONCOURSE_BAGGAGECLAIM_BIND_PORT
+          value: "7788"
+        - name: CONCOURSE_BAGGAGECLAIM_DEBUG_BIND_IP
+          value: 127.0.0.1
+        - name: CONCOURSE_BAGGAGECLAIM_DEBUG_BIND_PORT
+          value: "7787"
+        - name: CONCOURSE_BAGGAGECLAIM_BTRFS_BIN
+          value: btrfs
+        - name: CONCOURSE_BAGGAGECLAIM_MKFS_BIN
+          value: mkfs.btrfs
+        - name: CONCOURSE_VOLUME_SWEEPER_MAX_IN_FLIGHT
+          value: "5"
+        - name: CONCOURSE_CONTAINER_SWEEPER_MAX_IN_FLIGHT
+          value: "5"
+        - name: CONCOURSE_TRACING_SERVICE_NAME
+          value: worker-trace
+        - name: CONCOURSE_TRACING_JAEGER_ENDPOINT
+          value: http://somethinig/api/traces
+        - name: CONCOURSE_TRACING_JAEGER_SERVICE
+          value: worker-trace-jaeger
+        image: concourse/concourse:7.6.0
+        imagePullPolicy: IfNotPresent
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - /bin/bash
+              - /pre-stop-hook.sh
+        livenessProbe:
+          failureThreshold: 5
+          httpGet:
+            path: /
+            port: worker-hc
+          initialDelaySeconds: 10
+          periodSeconds: 15
+          timeoutSeconds: 3
+        name: RELEASE-NAME-worker
+        ports:
+        - containerPort: 8888
+          name: worker-hc
+        resources:
+          requests:
+            cpu: 100m
+            memory: 512Mi
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - mountPath: /concourse-keys
+          name: concourse-keys
+          readOnly: true
+        - mountPath: /concourse-work-dir
+          name: concourse-work-dir
+        - mountPath: /pre-stop-hook.sh
+          name: pre-stop-hook
+          subPath: pre-stop-hook.sh
+      initContainers:
+      - args:
+        - -ce
+        - |-
+          for v in $((btrfs subvolume list --sort=-ogen "/concourse-work-dir" || true) | awk '{print $9}'); do
+            (btrfs subvolume show "/concourse-work-dir/$v" && btrfs subvolume delete "/concourse-work-dir/$v") || true
+          done
+          rm -rf "/concourse-work-dir/*"
+        command:
+        - /bin/bash
+        image: concourse/concourse:7.6.0
+        imagePullPolicy: IfNotPresent
+        name: RELEASE-NAME-worker-init-rm
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - mountPath: /concourse-work-dir
+          name: concourse-work-dir
+      serviceAccountName: RELEASE-NAME-worker
+      terminationGracePeriodSeconds: 60
+      volumes:
+      - configMap:
+          name: RELEASE-NAME-worker
+        name: pre-stop-hook
+      - name: concourse-keys
+        secret:
+          defaultMode: 256
+          items:
+          - key: host-key-pub
+            path: host_key.pub
+          - key: worker-key
+            path: worker_key
+          secretName: RELEASE-NAME-worker
+  updateStrategy:
+    type: RollingUpdate
+  volumeClaimTemplates:
+  - metadata:
+      name: concourse-work-dir
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 20Gi

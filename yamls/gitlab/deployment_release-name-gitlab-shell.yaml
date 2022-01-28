@@ -1,0 +1,147 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations: null
+  labels:
+    app: gitlab-shell
+    chart: gitlab-shell-5.7.0
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-gitlab-shell
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: gitlab-shell
+      release: RELEASE-NAME
+  template:
+    metadata:
+      annotations:
+        checksum/config: 4168774dd12402bdc4872929d9576cd7475c3b21f74311928e20c21a04b4cf94
+        checksum/config-sshd: 522a0b293928f9a497dcfa4271ada16c620614d2cc86e6388b0cc9e35dc6e95e
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
+      labels:
+        app: gitlab-shell
+        chart: gitlab-shell-5.7.0
+        heritage: Helm
+        release: RELEASE-NAME
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: gitlab-shell
+                  release: RELEASE-NAME
+              topologyKey: kubernetes.io/hostname
+            weight: 1
+      automountServiceAccountToken: false
+      containers:
+      - env:
+        - name: GITALY_FEATURE_DEFAULT_ON
+          value: "1"
+        - name: CONFIG_TEMPLATE_DIRECTORY
+          value: /etc/gitlab-shell
+        - name: CONFIG_DIRECTORY
+          value: /srv/gitlab-shell
+        - name: KEYS_DIRECTORY
+          value: /etc/gitlab-secrets/ssh
+        - name: SSH_DAEMON
+          value: openssh
+        image: registry.gitlab.com/gitlab-org/build/cng/gitlab-shell:v13.22.2
+        livenessProbe:
+          exec:
+            command:
+            - /scripts/healthcheck
+          failureThreshold: 3
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 3
+        name: gitlab-shell
+        ports:
+        - containerPort: 2222
+          name: ssh
+        readinessProbe:
+          failureThreshold: 2
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          successThreshold: 1
+          tcpSocket:
+            port: 2222
+          timeoutSeconds: 3
+        resources:
+          requests:
+            cpu: 0
+            memory: 6M
+        volumeMounts:
+        - mountPath: /etc/gitlab-shell
+          name: shell-config
+        - mountPath: /etc/gitlab-secrets
+          name: shell-secrets
+          readOnly: true
+        - mountPath: /etc/ssh/sshd_config
+          name: sshd-config
+          readOnly: true
+          subPath: sshd_config
+        - mountPath: /etc/ssl/certs/
+          name: etc-ssl-certs
+          readOnly: true
+      initContainers:
+      - env: null
+        image: registry.gitlab.com/gitlab-org/build/cng/alpine-certificates:20191127-r2
+        name: certificates
+        resources:
+          requests:
+            cpu: 50m
+        volumeMounts:
+        - mountPath: /etc/ssl/certs
+          name: etc-ssl-certs
+          readOnly: false
+      - command:
+        - sh
+        - /config/configure
+        env: null
+        image: registry.gitlab.com/gitlab-org/cloud-native/mirror/images/busybox:latest
+        name: configure
+        resources:
+          requests:
+            cpu: 50m
+        volumeMounts:
+        - mountPath: /config
+          name: shell-config
+          readOnly: true
+        - mountPath: /init-config
+          name: shell-init-secrets
+          readOnly: true
+        - mountPath: /init-secrets
+          name: shell-secrets
+          readOnly: false
+      securityContext:
+        fsGroup: 1000
+        runAsUser: 1000
+      volumes:
+      - configMap:
+          name: RELEASE-NAME-gitlab-shell
+        name: shell-config
+      - configMap:
+          name: RELEASE-NAME-gitlab-shell-sshd
+        name: sshd-config
+      - name: shell-init-secrets
+        projected:
+          defaultMode: 288
+          sources:
+          - secret:
+              name: RELEASE-NAME-gitlab-shell-host-keys
+          - secret:
+              items:
+              - key: secret
+                path: shell/.gitlab_shell_secret
+              name: RELEASE-NAME-gitlab-shell-secret
+      - emptyDir:
+          medium: Memory
+        name: shell-secrets
+      - emptyDir:
+          medium: Memory
+        name: etc-ssl-certs

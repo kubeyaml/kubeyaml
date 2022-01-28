@@ -1,0 +1,30 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app: nuclio
+    release: RELEASE-NAME
+  name: RELEASE-NAME-nuclio-crd-admin-clusterrole
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - nodes
+  verbs:
+  - get
+  - list
+- apiGroups:
+  - nuclio.io
+  resources:
+  - nucliofunctions
+  - nuclioprojects
+  - nucliofunctionevents
+  - nuclioapigateways
+  verbs:
+  - '*'
+- apiGroups:
+  - ""
+  resources:
+  - namespaces
+  verbs:
+  - list

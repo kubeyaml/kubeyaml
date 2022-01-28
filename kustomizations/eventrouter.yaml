@@ -1,3 +1,0 @@
-helmCharts:
-- name: eventrouter
-  repo: https://helm-charts.wikimedia.org/stable/

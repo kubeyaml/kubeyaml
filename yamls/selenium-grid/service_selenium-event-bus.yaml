@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    component: selenium-grid-4
+    name: selenium-event-bus
+  name: selenium-event-bus
+spec:
+  ports:
+  - name: port1
+    port: 4442
+    protocol: TCP
+    targetPort: 4442
+  - name: port2
+    port: 4443
+    protocol: TCP
+    targetPort: 4443
+  - name: port3
+    port: 5557
+    protocol: TCP
+    targetPort: 5557
+  selector:
+    app: selenium-event-bus

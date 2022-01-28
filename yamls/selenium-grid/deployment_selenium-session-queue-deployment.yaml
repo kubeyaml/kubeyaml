@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: selenium-session-queue
+    component: selenium-grid-4
+    name: selenium-session-queue
+  name: selenium-session-queue-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: selenium-session-queue
+  template:
+    metadata:
+      labels:
+        app: selenium-session-queue
+        component: selenium-grid-4
+        name: selenium-session-queue
+    spec:
+      containers:
+      - env:
+        - name: SE_EVENT_BUS_HOST
+          value: selenium-event-bus
+        - name: SE_EVENT_BUS_PUBLISH_PORT
+          value: "4442"
+        - name: SE_EVENT_BUS_SUBSCRIBE_PORT
+          value: "4443"
+        image: selenium/session-queue:4.1.1-20220121
+        name: selenium-session-queue
+        ports:
+        - containerPort: 5556
+          protocol: TCP

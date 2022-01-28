@@ -1,0 +1,20 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  labels:
+    app: mathoid
+    chart: mathoid-0.1.1
+    heritage: Helm
+    release: RELEASE-NAME
+  name: mathoid-RELEASE-NAME
+spec:
+  ingress:
+  - ports:
+    - port: 10044
+      protocol: TCP
+  podSelector:
+    matchLabels:
+      app: mathoid
+      release: RELEASE-NAME
+  policyTypes:
+  - Ingress

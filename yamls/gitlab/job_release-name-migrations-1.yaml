@@ -1,0 +1,137 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  labels:
+    app: migrations
+    chart: migrations-5.7.0
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-migrations-1
+  namespace: default
+spec:
+  activeDeadlineSeconds: 3600
+  backoffLimit: 6
+  template:
+    metadata:
+      labels:
+        app: migrations
+        chart: migrations-5.7.0
+        heritage: Helm
+        release: RELEASE-NAME
+    spec:
+      automountServiceAccountToken: false
+      containers:
+      - args:
+        - /scripts/wait-for-deps
+        - /scripts/db-migrate
+        env:
+        - name: CONFIG_TEMPLATE_DIRECTORY
+          value: /var/opt/gitlab/templates
+        - name: CONFIG_DIRECTORY
+          value: /srv/gitlab/config
+        - name: BYPASS_SCHEMA_VERSION
+          value: "true"
+        - name: ENABLE_BOOTSNAP
+          value: "1"
+        image: registry.gitlab.com/gitlab-org/build/cng/gitlab-toolbox-ee:v14.7.0
+        name: migrations
+        resources:
+          requests:
+            cpu: 250m
+            memory: 200Mi
+        volumeMounts:
+        - mountPath: /var/opt/gitlab/templates
+          name: migrations-config
+        - mountPath: /etc/gitlab
+          name: migrations-secrets
+          readOnly: true
+        - mountPath: /srv/gitlab/config/secrets.yml
+          name: migrations-secrets
+          subPath: rails-secrets/secrets.yml
+        - mountPath: /srv/gitlab/config/initial_root_password
+          name: migrations-secrets
+          subPath: migrations/initial_root_password
+        - mountPath: /srv/gitlab/config/gitlab_shared_runners_registration_token
+          name: migrations-secrets
+          subPath: migrations/gitlab_shared_runners_registration_token
+        - mountPath: /etc/ssl/certs/
+          name: etc-ssl-certs
+          readOnly: true
+      initContainers:
+      - env: null
+        image: registry.gitlab.com/gitlab-org/build/cng/alpine-certificates:20191127-r2
+        name: certificates
+        resources:
+          requests:
+            cpu: 50m
+        volumeMounts:
+        - mountPath: /etc/ssl/certs
+          name: etc-ssl-certs
+          readOnly: false
+      - command:
+        - sh
+        - /config/configure
+        env: null
+        image: registry.gitlab.com/gitlab-org/cloud-native/mirror/images/busybox:latest
+        name: configure
+        resources:
+          requests:
+            cpu: 50m
+        volumeMounts:
+        - mountPath: /config
+          name: migrations-config
+          readOnly: true
+        - mountPath: /init-config
+          name: init-migrations-secrets
+          readOnly: true
+        - mountPath: /init-secrets
+          name: migrations-secrets
+          readOnly: false
+      restartPolicy: OnFailure
+      securityContext:
+        fsGroup: 1000
+        runAsUser: 1000
+      volumes:
+      - configMap:
+          name: RELEASE-NAME-migrations
+        name: migrations-config
+      - name: init-migrations-secrets
+        projected:
+          defaultMode: 256
+          sources:
+          - secret:
+              items:
+              - key: secrets.yml
+                path: rails-secrets/secrets.yml
+              name: RELEASE-NAME-rails-secret
+          - secret:
+              items:
+              - key: token
+                path: gitaly/gitaly_token
+              name: RELEASE-NAME-gitaly-secret
+          - secret:
+              items:
+              - key: secret
+                path: redis/redis-password
+              name: RELEASE-NAME-redis-secret
+          - secret:
+              items:
+              - key: postgresql-password
+                path: postgres/psql-password-main
+              name: RELEASE-NAME-postgresql-password
+          - secret:
+              items:
+              - key: password
+                path: migrations/initial_root_password
+              name: RELEASE-NAME-gitlab-initial-root-password
+          - secret:
+              items:
+              - key: runner-registration-token
+                path: migrations/gitlab_shared_runners_registration_token
+              name: RELEASE-NAME-gitlab-runner-secret
+      - emptyDir:
+          medium: Memory
+        name: migrations-secrets
+      - emptyDir:
+          medium: Memory
+        name: etc-ssl-certs

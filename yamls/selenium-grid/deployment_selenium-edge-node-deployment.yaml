@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: selenium-edge-node
+    component: selenium-grid-4
+    name: selenium-edge-node
+  name: selenium-edge-node-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: selenium-edge-node
+  template:
+    metadata:
+      labels:
+        app: selenium-edge-node
+        component: selenium-grid-4
+        name: selenium-edge-node
+    spec:
+      containers:
+      - env:
+        - name: SE_EVENT_BUS_HOST
+          value: selenium-event-bus
+        - name: SE_EVENT_BUS_PUBLISH_PORT
+          value: "4442"
+        - name: SE_EVENT_BUS_SUBSCRIBE_PORT
+          value: "4443"
+        image: selenium/node-edge:4.1.1-20220121
+        name: selenium-edge-node
+        ports:
+        - containerPort: 5553
+          protocol: TCP
+        resources:
+          limits:
+            cpu: "1"
+            memory: 1Gi
+          requests:
+            cpu: "1"
+            memory: 1Gi
+        volumeMounts:
+        - mountPath: /dev/shm
+          name: dshm
+      volumes:
+      - emptyDir:
+          medium: Memory
+        name: dshm

@@ -1,0 +1,15 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app: istio-reader
+    release: RELEASE-NAME
+  name: istio-reader-clusterrole-default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: istio-reader-clusterrole-default
+subjects:
+- kind: ServiceAccount
+  name: istio-reader-service-account
+  namespace: istio-system

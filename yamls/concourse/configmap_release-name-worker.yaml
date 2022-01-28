@@ -1,0 +1,14 @@
+apiVersion: v1
+data:
+  pre-stop-hook.sh: |
+    #!/bin/bash
+    kill -s SIGUSR2 1
+    while [ -e /proc/1 ]; do sleep 1; done
+kind: ConfigMap
+metadata:
+  labels:
+    app: RELEASE-NAME-worker
+    chart: concourse-16.1.16
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-worker

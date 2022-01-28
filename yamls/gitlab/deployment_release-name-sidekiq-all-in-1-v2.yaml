@@ -1,0 +1,256 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations: null
+  labels:
+    app: sidekiq
+    chart: sidekiq-5.7.0
+    heritage: Helm
+    queue-pod-name: all-in-1
+    release: RELEASE-NAME
+  name: RELEASE-NAME-sidekiq-all-in-1-v2
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: sidekiq
+      queue-pod-name: all-in-1
+      release: RELEASE-NAME
+  template:
+    metadata:
+      annotations:
+        checksum/configmap: d5ee28760018f393a6e7ba15a19ff1635434c682f33b4d081c21ebc7fd526bc1
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
+        gitlab.com/prometheus_port: "3807"
+        gitlab.com/prometheus_scrape: "true"
+        prometheus.io/port: "3807"
+        prometheus.io/scrape: "true"
+      labels:
+        app: sidekiq
+        chart: sidekiq-5.7.0
+        heritage: Helm
+        queue-pod-name: all-in-1
+        release: RELEASE-NAME
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: sidekiq
+                  release: RELEASE-NAME
+              topologyKey: kubernetes.io/hostname
+            weight: 1
+      automountServiceAccountToken: false
+      containers:
+      - env:
+        - name: prometheus_multiproc_dir
+          value: /metrics
+        - name: GITALY_FEATURE_DEFAULT_ON
+          value: "1"
+        - name: CONFIG_TEMPLATE_DIRECTORY
+          value: /var/opt/gitlab/templates
+        - name: CONFIG_DIRECTORY
+          value: /srv/gitlab/config
+        - name: SIDEKIQ_QUEUE_SELECTOR
+          value: ""
+        - name: SIDEKIQ_CONCURRENCY
+          value: "25"
+        - name: SIDEKIQ_TIMEOUT
+          value: "25"
+        - name: SIDEKIQ_QUEUES
+          value: null
+        - name: SIDEKIQ_NEGATE_QUEUES
+          value: null
+        - name: SIDEKIQ_DAEMON_MEMORY_KILLER
+          value: "1"
+        - name: SIDEKIQ_MEMORY_KILLER_CHECK_INTERVAL
+          value: "3"
+        - name: SIDEKIQ_MEMORY_KILLER_MAX_RSS
+          value: "2000000"
+        - name: SIDEKIQ_MEMORY_KILLER_GRACE_TIME
+          value: "900"
+        - name: SIDEKIQ_MEMORY_KILLER_SHUTDOWN_WAIT
+          value: "30"
+        - name: ENABLE_BOOTSNAP
+          value: "1"
+        image: registry.gitlab.com/gitlab-org/build/cng/gitlab-sidekiq-ee:v14.7.0
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - /bin/bash
+              - -c
+              - pkill -f 'sidekiq'
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /liveness
+            port: 3807
+          initialDelaySeconds: 20
+          periodSeconds: 60
+          successThreshold: 1
+          timeoutSeconds: 30
+        name: sidekiq
+        ports:
+        - containerPort: 3807
+          name: metrics
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /readiness
+            port: 3807
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 2
+        resources:
+          requests:
+            cpu: 900m
+            memory: 2G
+        volumeMounts:
+        - mountPath: /metrics
+          name: sidekiq-metrics
+        - mountPath: /var/opt/gitlab/templates
+          name: sidekiq-config
+          readOnly: true
+        - mountPath: /etc/gitlab
+          name: sidekiq-secrets
+          readOnly: true
+        - mountPath: /srv/gitlab/config/secrets.yml
+          name: sidekiq-secrets
+          subPath: rails-secrets/secrets.yml
+        - mountPath: /srv/gitlab/config/initializers/smtp_settings.rb
+          name: sidekiq-config
+          subPath: smtp_settings.rb
+        - mountPath: /srv/gitlab/INSTALLATION_TYPE
+          name: sidekiq-config
+          subPath: installation_type
+        - mountPath: /etc/ssl/certs/
+          name: etc-ssl-certs
+          readOnly: true
+      initContainers:
+      - env: null
+        image: registry.gitlab.com/gitlab-org/build/cng/alpine-certificates:20191127-r2
+        name: certificates
+        resources:
+          requests:
+            cpu: 50m
+        volumeMounts:
+        - mountPath: /etc/ssl/certs
+          name: etc-ssl-certs
+          readOnly: false
+      - command:
+        - sh
+        - /config/configure
+        env: null
+        image: registry.gitlab.com/gitlab-org/cloud-native/mirror/images/busybox:latest
+        name: configure
+        resources:
+          requests:
+            cpu: 50m
+        volumeMounts:
+        - mountPath: /config
+          name: sidekiq-config
+          readOnly: true
+        - mountPath: /init-config
+          name: init-sidekiq-secrets
+          readOnly: true
+        - mountPath: /init-secrets
+          name: sidekiq-secrets
+          readOnly: false
+      - args:
+        - /scripts/wait-for-deps
+        env:
+        - name: GITALY_FEATURE_DEFAULT_ON
+          value: "1"
+        - name: CONFIG_TEMPLATE_DIRECTORY
+          value: /var/opt/gitlab/templates
+        - name: CONFIG_DIRECTORY
+          value: /srv/gitlab/config
+        - name: SIDEKIQ_CONCURRENCY
+          value: "25"
+        - name: SIDEKIQ_TIMEOUT
+          value: "25"
+        - name: ENABLE_BOOTSNAP
+          value: "1"
+        image: registry.gitlab.com/gitlab-org/build/cng/gitlab-sidekiq-ee:v14.7.0
+        name: dependencies
+        resources:
+          requests:
+            cpu: 50m
+        volumeMounts:
+        - mountPath: /etc/ssl/certs/
+          name: etc-ssl-certs
+          readOnly: true
+        - mountPath: /var/opt/gitlab/templates
+          name: sidekiq-config
+          readOnly: true
+        - mountPath: /etc/gitlab
+          name: sidekiq-secrets
+          readOnly: true
+        - mountPath: /srv/gitlab/config/secrets.yml
+          name: sidekiq-secrets
+          readOnly: true
+          subPath: rails-secrets/secrets.yml
+      securityContext:
+        fsGroup: 1000
+        runAsUser: 1000
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - emptyDir:
+          medium: Memory
+        name: sidekiq-metrics
+      - name: sidekiq-config
+        projected:
+          sources:
+          - configMap:
+              name: RELEASE-NAME-sidekiq
+      - name: init-sidekiq-secrets
+        projected:
+          defaultMode: 256
+          sources:
+          - secret:
+              items:
+              - key: secrets.yml
+                path: rails-secrets/secrets.yml
+              name: RELEASE-NAME-rails-secret
+          - secret:
+              items:
+              - key: token
+                path: gitaly/gitaly_token
+              name: RELEASE-NAME-gitaly-secret
+          - secret:
+              items:
+              - key: secret
+                path: redis/redis-password
+              name: RELEASE-NAME-redis-secret
+          - secret:
+              items:
+              - key: postgresql-password
+                path: postgres/psql-password-main
+              name: RELEASE-NAME-postgresql-password
+          - secret:
+              items:
+              - key: registry-auth.key
+                path: registry/gitlab-registry.key
+              name: RELEASE-NAME-registry-secret
+          - secret:
+              items:
+              - key: secret
+                path: registry/notificationSecret
+              name: RELEASE-NAME-registry-notification
+          - secret:
+              items:
+              - key: accesskey
+                path: minio/accesskey
+              - key: secretkey
+                path: minio/secretkey
+              name: RELEASE-NAME-minio-secret
+      - emptyDir:
+          medium: Memory
+        name: sidekiq-secrets
+      - emptyDir:
+          medium: Memory
+        name: etc-ssl-certs

@@ -1,0 +1,45 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-delete-policy: hook-succeeded,hook-failed
+    helm.sh/hook-weight: "4"
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: cockroachdb
+    helm.sh/chart: cockroachdb-7.0.0
+  name: RELEASE-NAME-cockroachdb-self-signer
+  namespace: default
+spec:
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: cockroachdb
+        helm.sh/chart: cockroachdb-7.0.0
+      name: RELEASE-NAME-cockroachdb-self-signer
+    spec:
+      containers:
+      - args:
+        - generate
+        - --ca-duration=43800h
+        - --ca-expiry=648h
+        - --client-duration=672h
+        - --client-expiry=48h
+        - --node-duration=8760h
+        - --node-expiry=168h
+        env:
+        - name: STATEFULSET_NAME
+          value: RELEASE-NAME-cockroachdb
+        - name: NAMESPACE
+          value: default
+        - name: CLUSTER_DOMAIN
+          value: cluster.local
+        image: gcr.io/cockroachlabs-helm-charts/cockroach-self-signer-cert:1.3
+        imagePullPolicy: IfNotPresent
+        name: cert-generate-job
+      restartPolicy: Never
+      serviceAccountName: RELEASE-NAME-cockroachdb-self-signer

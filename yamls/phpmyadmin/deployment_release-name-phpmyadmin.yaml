@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: phpmyadmin
+    helm.sh/chart: phpmyadmin-9.0.2
+  name: RELEASE-NAME-phpmyadmin
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: RELEASE-NAME
+      app.kubernetes.io/name: phpmyadmin
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: phpmyadmin
+        helm.sh/chart: phpmyadmin-9.0.2
+    spec:
+      affinity:
+        nodeAffinity: null
+        podAffinity: null
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: RELEASE-NAME
+                  app.kubernetes.io/name: phpmyadmin
+              namespaces:
+              - default
+              topologyKey: kubernetes.io/hostname
+            weight: 1
+      containers:
+      - env:
+        - name: BITNAMI_DEBUG
+          value: "false"
+        - name: DATABASE_PORT_NUMBER
+          value: "3306"
+        - name: DATABASE_HOST
+          value: ""
+        - name: PHPMYADMIN_ALLOW_NO_PASSWORD
+          value: "true"
+        - name: PHPMYADMIN_ALLOW_ARBITRARY_SERVER
+          value: "true"
+        - name: DATABASE_ENABLE_SSL
+          value: "no"
+        image: docker.io/bitnami/phpmyadmin:5.1.2-debian-10-r0
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 6
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 30
+        name: phpmyadmin
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        - containerPort: 8443
+          name: https
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 6
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 30
+        resources:
+          limits: {}
+          requests: {}
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+        volumeMounts: null
+      hostAliases:
+      - hostnames:
+        - status.localhost
+        ip: 127.0.0.1
+      priorityClassName: ""
+      securityContext:
+        fsGroup: 1001
+      volumes: null

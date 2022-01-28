@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations: null
+  labels:
+    app: RELEASE-NAME-factorio-server-charts
+    chart: factorio-server-charts-1.0.11
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-factorio-server-charts
+spec:
+  ports:
+  - name: factorio
+    nodePort: null
+    port: 30000
+    protocol: UDP
+    targetPort: 30000
+  selector:
+    app: RELEASE-NAME-factorio-server-charts
+  type: LoadBalancer

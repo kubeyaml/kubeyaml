@@ -1,0 +1,62 @@
+apiVersion: v1
+data:
+  setupPostgres.sh: "#!/bin/bash\n# This can be used to create user, database, schema
+    and grant the required permissions.\n# This script can handle multiple execution
+    and not with \"already exists\" error. An entity will get created only if it does
+    not exist.\n# NOTE : 1. This expects current linux user to be admin user in postgreSQL
+    (this is the case with 'postgres' user)\n#        2. Execute this by logging as
+    postgres or any other user with similar privilege\n#        3. This files needs
+    be executed from a location which postgres (or the admin user which will be used)
+    has access to. (/opt can be used)\n#\n#        su postgres -c \"POSTGRES_PATH=/path/to/postgres/bin
+    PGPASSWORD=postgres bash ./createPostgresUsers.sh\"\nPOSTGRES_LABEL=\"Postgres\"\n\n#
+    Logging function\nlog() {\n    echo -e \"$1\"\n}\n\n# Error function\nerrorExit()
+    {\n    echo; echo -e \"\\033[31mERROR:\\033[0m $1\"; echo\n    exit 1\n}\n\n#
+    Create user if it does not exist\ncreateUser(){\n    local user=$1\n    local
+    pass=$2\n    [ ! -z ${user} ] || errorExit \"user is empty\"\n    [ ! -z ${pass}
+    ] || errorExit \"password is empty\"\n    ${PSQL} $POSTGRES_OPTIONS -tAc \"SELECT
+    1 FROM pg_roles WHERE rolname='${user}'\" | grep -q 1 1>/dev/null\n    local rc=$?\n
+    \   # Create user if doesn't exists\n    if [[ ${rc} -ne 0 ]]; then\n        echo
+    \"Creating user ${user}...\"\n        ${PSQL} $POSTGRES_OPTIONS -c \"CREATE USER
+    ${user} WITH PASSWORD '${pass}';\" 1>/dev/null || errorExit \"Failed creating
+    user ${user} on PostgreSQL\"\n        echo \"Done\"\n    fi\n}\n\n# Create database
+    if it does not exist\ncreateDB(){\n    local db=$1\n    local user=$2\n    [ !
+    -z ${db}   ] || errorExit \"db is empty\"\n    [ ! -z ${user} ] || errorExit \"user
+    is empty\"\n    if ! ${PSQL} $POSTGRES_OPTIONS -lqt | cut -d \\| -f 1 | grep -qw
+    ${db} 1>/dev/null; then\n        ${PSQL} $POSTGRES_OPTIONS -c \"CREATE DATABASE
+    ${db} WITH OWNER=${user} ENCODING='UTF8';\" 1>/dev/null || errorExit \"Failed
+    creating db ${db} on PostgreSQL\"\n    fi\n}\n\n# Check if postgres db is ready\npostgresIsNotReady()
+    {\n    attempt_number=${attempt_number:-0}\n    ${PSQL} $POSTGRES_OPTIONS --version
+    > /dev/null 2>&1\n    outcome1=$?\n    # Execute a simple db function to verify
+    if postgres is up and running\n    ${PSQL} $POSTGRES_OPTIONS -l > /dev/null 2>&1\n
+    \   outcome2=$?\n    if [[ $outcome1 -eq 0 ]] && [[ $outcome2 -eq 0  ]]; then\n
+    \       return 0\n    else\n        if [ $attempt_number -gt 10 ]; then\n            errorExit
+    \"Unable to proceed. $POSTGRES_LABEL is not reachable. This can occur if the service
+    is not running \\\nor the port is not accepting requests at $DB_PORT (host : $DB_HOST).
+    Gave up after $attempt_number attempts\"\n        fi\n        let \"attempt_number=attempt_number+1\"\n
+    \       return 1\n    fi\n}\n\n# Wait for availability of postgres\ninit(){\n
+    \   if [[ -z $POSTGRES_PATH ]]; then\n        hash ${PSQL} 2>/dev/null || { echo
+    >&2 \"\\\"${PSQL}\\\" is not installed or not available in path\"; exit 1; }\n
+    \   fi\n    log \"Waiting for $POSTGRES_LABEL to get ready using the commands:
+    \\\"${PSQL} $POSTGRES_OPTIONS --version\\\" & \\\"${PSQL} $POSTGRES_OPTIONS -l\\\"\"\n
+    \   attempt_number=0\n    while ! postgresIsNotReady\n    do\n        sleep 5\n
+    \       echo -n '.'\n    done\n    log \"$POSTGRES_LABEL is ready. Executing commands\"\n}\n\n#
+    Create users and DB\nsetupDB(){\n    local user=$1\n    local pass=$2\n    local
+    db=$3\n    # Create user\n    createUser \"${user}\" \"${pass}\"    \n    createDB
+    \"${db}\" \"${user}\"\n    ${PSQL} $POSTGRES_OPTIONS -c \"GRANT ALL PRIVILEGES
+    ON DATABASE ${db} TO ${user}\" 1>/dev/null;\n}\n\n# Load default and custom postgres
+    details from below files\n[ -f setenvDefaults.sh ] && source setenvDefaults.sh
+    || true\n[ -f setenv.sh         ] && source setenv.sh         || true\n\n# DB_NAME=$1\n#
+    DB_USERNAME=$2\n# DB_PASSWORD=$3\n# CHART_NAME=$4\n\n: ${DB_NAME:=$1}\n: ${DB_USERNAME:=$2}\n:
+    ${DB_PASSWORD:=$3}\n: ${CHART_NAME:=4}\n\n### Following are the postgres details
+    being setup for each service.\n##  Common details\n: ${DB_PORT:=5432}\n: ${DB_SSL_MODE:=\"disable\"}\n:
+    ${DB_TABLESPACE:=\"pg_default\"}\n: ${DB_HOST:=\"localhost\"}\n\n## Set Postgres
+    options\n[[ -z \"${POSTGRES_PATH}\" ]] && PSQL=psql || PSQL=${POSTGRES_PATH}/psql\nPOSTGRES_OPTIONS=\"sslmode=${DB_SSL_MODE}
+    --host=${DB_HOST} -U ${PGUSERNAME} -w\"\n\ninit\n\nlog \"Setting up DB $DB_NAME
+    and user $DB_USERNAME on Postgres for $CHART_NAME chart.\"\nsetupDB \"${DB_USERNAME}\"
+    \"${DB_PASSWORD}\" \"${DB_NAME}\" || true\n\nlog \"$POSTGRES_LABEL setup is now
+    complete.\"\n\nexit 0\n"
+kind: ConfigMap
+metadata:
+  labels:
+    app: postgres-init
+  name: RELEASE-NAME-setup-script

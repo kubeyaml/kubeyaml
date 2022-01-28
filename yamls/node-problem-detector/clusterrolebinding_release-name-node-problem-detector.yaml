@@ -1,0 +1,17 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: node-problem-detector
+    helm.sh/chart: node-problem-detector-2.0.9
+  name: RELEASE-NAME-node-problem-detector
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: RELEASE-NAME-node-problem-detector
+subjects:
+- kind: ServiceAccount
+  name: RELEASE-NAME-node-problem-detector
+  namespace: default

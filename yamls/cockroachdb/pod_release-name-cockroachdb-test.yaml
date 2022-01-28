@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    helm.sh/hook: test-success
+  name: RELEASE-NAME-cockroachdb-test
+  namespace: default
+spec:
+  containers:
+  - command:
+    - /cockroach/cockroach
+    - sql
+    - --insecure
+    - --host
+    - RELEASE-NAME-cockroachdb-public.default
+    - --port
+    - "26257"
+    - -e
+    - SHOW DATABASES;
+    image: cockroachdb/cockroach:v21.2.4
+    imagePullPolicy: IfNotPresent
+    name: client-test
+  restartPolicy: Never

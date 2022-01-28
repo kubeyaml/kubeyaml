@@ -1,0 +1,163 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: consul
+    chart: consul-helm
+    component: server
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-consul-server
+  namespace: default
+spec:
+  podManagementPolicy: Parallel
+  replicas: 3
+  selector:
+    matchLabels:
+      app: consul
+      chart: consul-helm
+      component: server
+      hasDNS: "true"
+      release: RELEASE-NAME
+  serviceName: RELEASE-NAME-consul-server
+  template:
+    metadata:
+      annotations:
+        consul.hashicorp.com/config-checksum: 2c5397272acdc6fe5b079bf25c846c5a17f474603c794c64e7226ce0690625f7
+        consul.hashicorp.com/connect-inject: "false"
+      labels:
+        app: consul
+        chart: consul-helm
+        component: server
+        hasDNS: "true"
+        release: RELEASE-NAME
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                app: consul
+                component: server
+                release: RELEASE-NAME
+            topologyKey: kubernetes.io/hostname
+      containers:
+      - command:
+        - /bin/sh
+        - -ec
+        - |
+          CONSUL_FULLNAME="RELEASE-NAME-consul"
+
+          mkdir -p /consul/extra-config
+          cp /consul/config/extra-from-values.json /consul/extra-config/extra-from-values.json
+          [ -n "${HOST_IP}" ] && sed -Ei "s|HOST_IP|${HOST_IP?}|g" /consul/extra-config/extra-from-values.json
+          [ -n "${POD_IP}" ] && sed -Ei "s|POD_IP|${POD_IP?}|g" /consul/extra-config/extra-from-values.json
+          [ -n "${HOSTNAME}" ] && sed -Ei "s|HOSTNAME|${HOSTNAME?}|g" /consul/extra-config/extra-from-values.json
+
+          exec /usr/local/bin/docker-entrypoint.sh consul agent \
+            -advertise="${ADVERTISE_IP}" \
+            -bind=0.0.0.0 \
+            -bootstrap-expect=3 \
+            -client=0.0.0.0 \
+            -config-dir=/consul/config \
+            -datacenter=dc1 \
+            -data-dir=/consul/data \
+            -domain=consul \
+            -hcl="connect { enabled = true }" \
+            -ui \
+            -retry-join="${CONSUL_FULLNAME}-server-0.${CONSUL_FULLNAME}-server.${NAMESPACE}.svc:8301" \
+            -retry-join="${CONSUL_FULLNAME}-server-1.${CONSUL_FULLNAME}-server.${NAMESPACE}.svc:8301" \
+            -retry-join="${CONSUL_FULLNAME}-server-2.${CONSUL_FULLNAME}-server.${NAMESPACE}.svc:8301" \
+            -serf-lan-port=8301 \
+            -config-file=/consul/extra-config/extra-from-values.json \
+            -server
+        env:
+        - name: ADVERTISE_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: HOST_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.hostIP
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: CONSUL_DISABLE_PERM_MGMT
+          value: "true"
+        image: hashicorp/consul:1.11.2
+        name: consul
+        ports:
+        - containerPort: 8500
+          name: http
+        - containerPort: 8301
+          name: serflan-tcp
+          protocol: TCP
+        - containerPort: 8301
+          name: serflan-udp
+          protocol: UDP
+        - containerPort: 8302
+          name: serfwan-tcp
+          protocol: TCP
+        - containerPort: 8302
+          name: serfwan-udp
+          protocol: UDP
+        - containerPort: 8300
+          name: server
+        - containerPort: 8600
+          name: dns-tcp
+          protocol: TCP
+        - containerPort: 8600
+          name: dns-udp
+          protocol: UDP
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -ec
+            - |
+              curl http://127.0.0.1:8500/v1/status/leader \
+              2>/dev/null | grep -E '".+"'
+          failureThreshold: 2
+          initialDelaySeconds: 5
+          periodSeconds: 3
+          successThreshold: 1
+          timeoutSeconds: 5
+        resources:
+          limits:
+            cpu: 100m
+            memory: 100Mi
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        securityContext: null
+        volumeMounts:
+        - mountPath: /consul/data
+          name: data-default
+        - mountPath: /consul/config
+          name: config
+      securityContext:
+        fsGroup: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 100
+      serviceAccountName: RELEASE-NAME-consul-server
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - configMap:
+          name: RELEASE-NAME-consul-server-config
+        name: config
+  volumeClaimTemplates:
+  - metadata:
+      name: data-default
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 10Gi

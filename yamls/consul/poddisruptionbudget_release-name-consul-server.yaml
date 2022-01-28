@@ -1,0 +1,18 @@
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  labels:
+    app: consul
+    chart: consul-helm
+    component: server
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-consul-server
+  namespace: default
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: consul
+      component: server
+      release: RELEASE-NAME

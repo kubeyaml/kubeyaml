@@ -1,0 +1,127 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: jmeter-service
+    app.kubernetes.io/version: 0.12.0
+    helm.sh/chart: jmeter-service-0.12.0
+  name: RELEASE-NAME-jmeter-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: RELEASE-NAME
+      app.kubernetes.io/name: jmeter-service
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: jmeter-service
+        app.kubernetes.io/version: 0.12.0
+        helm.sh/chart: jmeter-service-0.12.0
+    spec:
+      containers:
+      - env:
+        - name: CONFIGURATION_SERVICE
+          value: http://localhost:8081/configuration-service
+        - name: env
+          value: production
+        - name: LOG_LEVEL
+          value: info
+        image: docker.io/keptn/jmeter-service:0.12.0
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 0
+          periodSeconds: 5
+        name: jmeter-service
+        ports:
+        - containerPort: 80
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+        securityContext: {}
+      - env:
+        - name: PUBSUB_TOPIC
+          value: sh.keptn.event.test.triggered
+        - name: PUBSUB_RECIPIENT
+          value: 127.0.0.1
+        - name: STAGE_FILTER
+          value: ""
+        - name: PROJECT_FILTER
+          value: ""
+        - name: SERVICE_FILTER
+          value: ""
+        - name: VERSION
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.labels['app.kubernetes.io/version']
+        - name: LOCATION
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.labels['app.kubernetes.io/component']
+        - name: K8S_DEPLOYMENT_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.labels['app.kubernetes.io/name']
+        - name: K8S_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: K8S_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: K8S_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: PUBSUB_GROUP
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.labels['app.kubernetes.io/name']
+        image: docker.io/keptn/distributor:0.12.0
+        imagePullPolicy: Always
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - /bin/sleep
+              - "60"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 0
+          periodSeconds: 5
+        name: distributor
+        ports:
+        - containerPort: 8080
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          limits:
+            cpu: 100m
+            memory: 32Mi
+          requests:
+            cpu: 25m
+            memory: 16Mi
+      securityContext: {}
+      serviceAccountName: RELEASE-NAME-jmeter-service
+      terminationGracePeriodSeconds: 90

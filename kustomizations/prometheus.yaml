@@ -1,3 +1,0 @@
-helmCharts:
-- name: prometheus
-  repo: https://prometheus-community.github.io/helm-charts

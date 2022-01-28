@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/component: server
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: drone
+    app.kubernetes.io/version: 1.9.0
+    helm.sh/chart: drone-0.1.7
+  name: RELEASE-NAME-drone
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: server
+      app.kubernetes.io/instance: RELEASE-NAME
+      app.kubernetes.io/name: drone
+  strategy: {}
+  template:
+    metadata:
+      annotations:
+        checksum/secrets: 9d5bffea492989b7d35c622fc6e4f000fad21216f7e9d6816911e4dd6ff4af3d
+      labels:
+        app.kubernetes.io/component: server
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/name: drone
+    spec:
+      automountServiceAccountToken: false
+      containers:
+      - envFrom:
+        - configMapRef:
+            name: RELEASE-NAME-drone
+        image: drone/drone:1.9.0
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /
+            port: http
+        name: server
+        ports:
+        - containerPort: 80
+          name: http
+          protocol: TCP
+        resources: {}
+        securityContext: {}
+        volumeMounts:
+        - mountPath: /data
+          name: storage-volume
+          subPath: ""
+      securityContext: {}
+      volumes:
+      - name: storage-volume
+        persistentVolumeClaim:
+          claimName: RELEASE-NAME-drone

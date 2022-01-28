@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: selenium-event-bus
+    component: selenium-grid-4
+    name: selenium-event-bus
+  name: selenium-event-bus-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: selenium-event-bus
+  template:
+    metadata:
+      labels:
+        app: selenium-event-bus
+        component: selenium-grid-4
+        name: selenium-event-bus
+    spec:
+      containers:
+      - image: selenium/event-bus:4.1.1-20220121
+        name: selenium-event-bus
+        ports:
+        - containerPort: 4442
+          protocol: TCP
+        - containerPort: 4443
+          protocol: TCP
+        - containerPort: 5557
+          protocol: TCP

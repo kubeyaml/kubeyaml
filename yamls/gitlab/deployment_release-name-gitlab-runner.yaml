@@ -1,0 +1,148 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: RELEASE-NAME-gitlab-runner
+    chart: gitlab-runner-0.37.0
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-gitlab-runner
+spec:
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: RELEASE-NAME-gitlab-runner
+  template:
+    metadata:
+      annotations:
+        checksum/configmap: 7476f704dcbc9da563deb8f0cc9bc95bf802a3a79a6baf91e98896a9d16a9a55
+        checksum/secrets: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+        gitlab.com/prometheus_port: "9252"
+        gitlab.com/prometheus_scrape: "true"
+        prometheus.io/port: "9252"
+        prometheus.io/scrape: "true"
+      labels:
+        app: RELEASE-NAME-gitlab-runner
+        chart: gitlab-runner-0.37.0
+        heritage: Helm
+        release: RELEASE-NAME
+    spec:
+      containers:
+      - command:
+        - /usr/bin/dumb-init
+        - --
+        - /bin/bash
+        - /configmaps/entrypoint
+        env:
+        - name: CI_SERVER_URL
+          value: https://gitlab.example.com
+        - name: CLONE_URL
+          value: ""
+        - name: RUNNER_EXECUTOR
+          value: kubernetes
+        - name: REGISTER_LOCKED
+          value: "false"
+        - name: RUNNER_TAG_LIST
+          value: ""
+        - name: KUBERNETES_NAMESPACE
+          value: default
+        image: gitlab/gitlab-runner:alpine-v14.7.0
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          exec:
+            command:
+            - /bin/bash
+            - /configmaps/check-live
+          failureThreshold: 3
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: RELEASE-NAME-gitlab-runner
+        ports:
+        - containerPort: 9252
+          name: metrics
+        - containerPort: 8093
+          name: session-server
+          protocol: TCP
+        readinessProbe:
+          exec:
+            command:
+            - /usr/bin/pgrep
+            - gitlab.*runner
+          failureThreshold: 3
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources: {}
+        securityContext:
+          allowPrivilegeEscalation: false
+        volumeMounts:
+        - mountPath: /secrets
+          name: runner-secrets
+        - mountPath: /home/gitlab-runner/.gitlab-runner
+          name: etc-gitlab-runner
+        - mountPath: /configmaps
+          name: configmaps
+      initContainers:
+      - command:
+        - sh
+        - /configmaps/configure
+        env:
+        - name: CI_SERVER_URL
+          value: https://gitlab.example.com
+        - name: CLONE_URL
+          value: ""
+        - name: RUNNER_EXECUTOR
+          value: kubernetes
+        - name: REGISTER_LOCKED
+          value: "false"
+        - name: RUNNER_TAG_LIST
+          value: ""
+        - name: KUBERNETES_NAMESPACE
+          value: default
+        image: gitlab/gitlab-runner:alpine-v14.7.0
+        imagePullPolicy: IfNotPresent
+        name: configure
+        resources: {}
+        securityContext:
+          allowPrivilegeEscalation: false
+        volumeMounts:
+        - mountPath: /secrets
+          name: runner-secrets
+          readOnly: false
+        - mountPath: /configmaps
+          name: configmaps
+          readOnly: true
+        - mountPath: /init-secrets
+          name: init-runner-secrets
+          readOnly: true
+      securityContext:
+        fsGroup: 65533
+        runAsUser: 100
+      serviceAccountName: RELEASE-NAME-gitlab-runner
+      terminationGracePeriodSeconds: 3600
+      volumes:
+      - emptyDir:
+          medium: Memory
+        name: runner-secrets
+      - emptyDir:
+          medium: Memory
+        name: etc-gitlab-runner
+      - name: init-runner-secrets
+        projected:
+          sources:
+          - secret:
+              name: RELEASE-NAME-minio-secret
+          - secret:
+              items:
+              - key: runner-registration-token
+                path: runner-registration-token
+              - key: runner-token
+                path: runner-token
+              name: RELEASE-NAME-gitlab-runner-secret
+      - configMap:
+          name: RELEASE-NAME-gitlab-runner
+        name: configmaps

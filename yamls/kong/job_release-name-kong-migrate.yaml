@@ -1,0 +1,54 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    helm.sh/hook: post-install, post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+  labels:
+    app.kubernetes.io/component: server
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: kong
+    helm.sh/chart: kong-5.0.4
+  name: RELEASE-NAME-kong-migrate
+  namespace: default
+spec:
+  template:
+    metadata:
+      annotations: null
+      labels:
+        app.kubernetes.io/component: migration
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: kong
+        helm.sh/chart: kong-5.0.4
+    spec:
+      containers:
+      - env:
+        - name: KONG_MIGRATE
+          value: "yes"
+        - name: BITNAMI_DEBUG
+          value: "false"
+        - name: KONG_EXIT_AFTER_MIGRATE
+          value: "yes"
+        - name: KONG_DATABASE
+          value: postgres
+        - name: KONG_PG_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: postgresql-password
+              name: RELEASE-NAME-postgresql
+        - name: KONG_PG_HOST
+          value: RELEASE-NAME-postgresql
+        - name: KONG_PG_USER
+          value: kong
+        image: docker.io/bitnami/kong:2.7.1-debian-10-r0
+        imagePullPolicy: IfNotPresent
+        name: kong-migrate
+        resources:
+          limits: {}
+          requests: {}
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+      restartPolicy: OnFailure

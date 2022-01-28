@@ -1,0 +1,15 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app: istiod
+    release: RELEASE-NAME
+  name: istiod-clusterrole-default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: istiod-clusterrole-default
+subjects:
+- kind: ServiceAccount
+  name: istiod
+  namespace: istio-system

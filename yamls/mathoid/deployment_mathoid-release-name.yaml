@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: mathoid
+    chart: mathoid-0.1.1
+    heritage: Helm
+    release: RELEASE-NAME
+  name: mathoid-RELEASE-NAME
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mathoid
+      release: RELEASE-NAME
+  template:
+    metadata:
+      annotations:
+        checksum/config: 24eec11dbff7107c5d675da88bf3bebba63a42cde24bef45575f76cc032ba0fe
+        prometheus.io/scrape: "false"
+      labels:
+        app: mathoid
+        release: RELEASE-NAME
+        routed_via: RELEASE-NAME
+    spec:
+      containers:
+      - args:
+        - server.js
+        - -c
+        - /etc/mathoid/config.yaml
+        command:
+        - nodejs
+        env:
+        - name: SERVICE_IDENTIFIER
+          value: mathoid-RELEASE-NAME
+        image: docker-registry.wikimedia.org/wikimedia/mediawiki-services-mathoid:latest
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          tcpSocket:
+            port: 10044
+        name: mathoid-RELEASE-NAME
+        ports:
+        - containerPort: 10044
+        readinessProbe:
+          httpGet:
+            path: /_info
+            port: 10044
+        resources:
+          limits:
+            cpu: 1
+            memory: 1Gi
+          requests:
+            cpu: 100m
+            memory: 200Mi
+        volumeMounts:
+        - mountPath: /etc/mathoid
+          name: config-volume
+      volumes:
+      - configMap:
+          name: config-RELEASE-NAME
+        name: config-volume

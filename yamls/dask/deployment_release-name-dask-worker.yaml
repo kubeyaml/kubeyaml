@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: dask
+    chart: dask-2022.1.1
+    component: worker
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-dask-worker
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: dask
+      component: worker
+      release: RELEASE-NAME
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: dask
+        component: worker
+        release: RELEASE-NAME
+    spec:
+      containers:
+      - args:
+        - dask-worker
+        - RELEASE-NAME-dask-scheduler:8786
+        - --no-dashboard
+        - --dashboard-address
+        - "8790"
+        env: null
+        image: daskdev/dask:2022.1.0
+        imagePullPolicy: IfNotPresent
+        name: RELEASE-NAME-dask-worker
+        ports:
+        - containerPort: 8790
+          name: dashboard
+        resources: {}
+      imagePullSecrets: null

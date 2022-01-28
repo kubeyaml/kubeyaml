@@ -1,3 +1,0 @@
-helmCharts:
-- name: kibana
-  repo: https://helm.elastic.co

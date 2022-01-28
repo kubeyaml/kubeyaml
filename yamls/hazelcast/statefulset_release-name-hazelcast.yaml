@@ -1,0 +1,93 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  annotations: null
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: hazelcast
+    helm.sh/chart: hazelcast-5.3.3
+  name: RELEASE-NAME-hazelcast
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: RELEASE-NAME
+      app.kubernetes.io/name: hazelcast
+      role: hazelcast
+  serviceName: RELEASE-NAME-hazelcast
+  template:
+    metadata:
+      annotations:
+        checksum/hazelcast-config: c4b6a3fd48054c4013ca0c642202dfc072f46a56dd9e0062a942d6a8f565cb18
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: hazelcast
+        helm.sh/chart: hazelcast-5.3.3
+        role: hazelcast
+    spec:
+      automountServiceAccountToken: true
+      containers:
+      - env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: JAVA_OPTS
+          value: '-Dhazelcast.config=/data/hazelcast/hazelcast.yaml -DserviceName=RELEASE-NAME-hazelcast
+            -Dnamespace=default -Dhz.jet.enabled=true -Dhazelcast.shutdownhook.policy=GRACEFUL
+            -Dhazelcast.shutdownhook.enabled=true -Dhazelcast.graceful.shutdown.max.wait=600   '
+        image: hazelcast/hazelcast:5.0.2
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 10
+          httpGet:
+            path: /hazelcast/health/node-state
+            port: 5701
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 10
+        name: RELEASE-NAME-hazelcast
+        ports:
+        - containerPort: 5701
+          hostPort: null
+          name: hazelcast
+        readinessProbe:
+          failureThreshold: 10
+          httpGet:
+            path: /hazelcast/health/node-state
+            port: 5701
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 10
+        resources: null
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          privileged: false
+          readOnlyRootFilesystem: true
+          runAsGroup: 65534
+          runAsNonRoot: true
+          runAsUser: 65534
+        volumeMounts:
+        - mountPath: /data/hazelcast
+          name: hazelcast-storage
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      securityContext:
+        fsGroup: 65534
+        runAsGroup: 65534
+        runAsNonRoot: true
+        runAsUser: 65534
+      serviceAccountName: RELEASE-NAME-hazelcast
+      terminationGracePeriodSeconds: 600
+      volumes:
+      - configMap:
+          name: RELEASE-NAME-hazelcast-configuration
+        name: hazelcast-storage

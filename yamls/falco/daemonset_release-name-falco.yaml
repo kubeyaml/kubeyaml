@@ -1,0 +1,135 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    app: RELEASE-NAME-falco
+    chart: falco-1.16.4
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-falco
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: RELEASE-NAME-falco
+      role: security
+  template:
+    metadata:
+      annotations:
+        checksum/certs: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
+        checksum/config: b79399395e22ad3c17a8777b5279afa1fe358215a70d5b3ddc2d72edda4b9719
+        checksum/rules: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
+      labels:
+        app: RELEASE-NAME-falco
+        role: security
+      name: RELEASE-NAME-falco
+    spec:
+      containers:
+      - args:
+        - /usr/bin/falco
+        - --cri
+        - /run/containerd/containerd.sock
+        - -K
+        - /var/run/secrets/kubernetes.io/serviceaccount/token
+        - -k
+        - https://$(KUBERNETES_SERVICE_HOST)
+        - --k8s-node="$(FALCO_K8S_NODE_NAME)"
+        - -pk
+        env:
+        - name: FALCO_K8S_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        image: docker.io/falcosecurity/falco:0.30.0
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8765
+          initialDelaySeconds: 60
+          periodSeconds: 15
+          timeoutSeconds: 5
+        name: falco
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8765
+          initialDelaySeconds: 30
+          periodSeconds: 15
+          timeoutSeconds: 5
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 1024Mi
+          requests:
+            cpu: 100m
+            memory: 512Mi
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - mountPath: /host/var/run/docker.sock
+          name: docker-socket
+        - mountPath: /host/run/containerd/containerd.sock
+          name: containerd-socket
+        - mountPath: /host/dev
+          name: dev-fs
+          readOnly: true
+        - mountPath: /host/proc
+          name: proc-fs
+          readOnly: true
+        - mountPath: /host/boot
+          name: boot-fs
+          readOnly: true
+        - mountPath: /host/lib/modules
+          name: lib-modules
+        - mountPath: /host/usr
+          name: usr-fs
+          readOnly: true
+        - mountPath: /host/etc
+          name: etc-fs
+          readOnly: true
+        - mountPath: /etc/falco
+          name: config-volume
+      serviceAccountName: RELEASE-NAME-falco
+      tolerations:
+      - effect: NoSchedule
+        key: node-role.kubernetes.io/master
+      volumes:
+      - hostPath:
+          path: /var/run/docker.sock
+        name: docker-socket
+      - hostPath:
+          path: /run/containerd/containerd.sock
+        name: containerd-socket
+      - hostPath:
+          path: /dev
+        name: dev-fs
+      - hostPath:
+          path: /proc
+        name: proc-fs
+      - hostPath:
+          path: /boot
+        name: boot-fs
+      - hostPath:
+          path: /lib/modules
+        name: lib-modules
+      - hostPath:
+          path: /usr
+        name: usr-fs
+      - hostPath:
+          path: /etc
+        name: etc-fs
+      - configMap:
+          items:
+          - key: falco.yaml
+            path: falco.yaml
+          - key: falco_rules.yaml
+            path: falco_rules.yaml
+          - key: falco_rules.local.yaml
+            path: falco_rules.local.yaml
+          - key: application_rules.yaml
+            path: rules.available/application_rules.yaml
+          name: RELEASE-NAME-falco
+        name: config-volume
+  updateStrategy:
+    type: RollingUpdate

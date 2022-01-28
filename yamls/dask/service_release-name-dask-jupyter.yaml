@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: dask
+    chart: dask-2022.1.1
+    component: jupyter
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-dask-jupyter
+spec:
+  ports:
+  - name: RELEASE-NAME-dask-jupyter
+    port: 80
+    targetPort: 8888
+  selector:
+    app: dask
+    component: jupyter
+    release: RELEASE-NAME
+  type: ClusterIP

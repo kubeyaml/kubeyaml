@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: mariadb-galera
+    helm.sh/chart: mariadb-galera-6.2.2
+  name: RELEASE-NAME-mariadb-galera-headless
+spec:
+  clusterIP: None
+  ports:
+  - name: galera
+    port: 4567
+    targetPort: galera
+  - name: ist
+    port: 4568
+    targetPort: ist
+  - name: sst
+    port: 4444
+    targetPort: sst
+  publishNotReadyAddresses: true
+  selector:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/name: mariadb-galera
+  type: ClusterIP

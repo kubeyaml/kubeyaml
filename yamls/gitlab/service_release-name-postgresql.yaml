@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations: null
+  labels:
+    app: postgresql
+    chart: postgresql-8.9.4
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-postgresql
+spec:
+  ports:
+  - name: tcp-postgresql
+    port: 5432
+    targetPort: tcp-postgresql
+  selector:
+    app: postgresql
+    release: RELEASE-NAME
+    role: master
+  type: ClusterIP

@@ -1,0 +1,110 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: artifactory
+    chart: artifactory-107.29.8
+    component: nginx
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-artifactory-nginx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: artifactory
+      component: nginx
+      release: RELEASE-NAME
+  template:
+    metadata:
+      annotations:
+        checksum/nginx-artifactory-conf: 44ececd4bd30873c2160b2e9ed631b9cd7001755d60ad5dfcf16bed9eb765e01
+        checksum/nginx-conf: e19dcfb4b049c8aecca145d5b8f9e5345ee72115ccacac0f7dd957cbfde3f0ce
+      labels:
+        app: artifactory
+        chart: artifactory-107.29.8
+        component: nginx
+        heritage: Helm
+        release: RELEASE-NAME
+    spec:
+      containers:
+      - command:
+        - nginx
+        - -g
+        - daemon off;
+        image: releases-docker.jfrog.io/jfrog/nginx-artifactory-pro:7.29.8
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 10
+          httpGet:
+            path: /router/api/v1/system/health
+            port: 80
+            scheme: HTTP
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        name: nginx
+        ports:
+        - containerPort: 80
+          name: http
+        - containerPort: 443
+          name: https
+        readinessProbe:
+          failureThreshold: 10
+          httpGet:
+            path: /router/api/v1/system/health
+            port: 80
+            scheme: HTTP
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        resources: {}
+        startupProbe:
+          failureThreshold: 90
+          httpGet:
+            path: /router/api/v1/system/health
+            port: 80
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          timeoutSeconds: 5
+        volumeMounts:
+        - mountPath: /etc/nginx/nginx.conf
+          name: nginx-conf
+          subPath: nginx.conf
+        - mountPath: /var/opt/jfrog/nginx/conf.d/
+          name: nginx-artifactory-conf
+        - mountPath: /var/opt/jfrog/nginx
+          name: nginx-volume
+        - mountPath: /var/opt/jfrog/nginx/ssl
+          name: ssl-certificates
+      initContainers:
+      - command:
+        - /bin/sh
+        - -c
+        - |
+          rm -rfv /var/opt/jfrog/nginx/lost+found; mkdir -p /var/opt/jfrog/nginx/logs;
+        image: releases-docker.jfrog.io/jfrog/ubi-minimal:8.5-204
+        imagePullPolicy: IfNotPresent
+        name: setup
+        volumeMounts:
+        - mountPath: /var/opt/jfrog/nginx
+          name: nginx-volume
+      securityContext:
+        fsGroup: 107
+        runAsUser: 104
+      serviceAccountName: default
+      volumes:
+      - configMap:
+          name: RELEASE-NAME-artifactory-nginx-conf
+        name: nginx-conf
+      - configMap:
+          name: RELEASE-NAME-artifactory-nginx-artifactory-conf
+        name: nginx-artifactory-conf
+      - emptyDir: {}
+        name: nginx-volume
+      - name: ssl-certificates
+        secret:
+          secretName: RELEASE-NAME-artifactory-nginx-certificate

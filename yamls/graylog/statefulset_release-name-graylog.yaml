@@ -1,0 +1,143 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: graylog
+    app.kubernetes.io/version: 4.2.3
+    helm.sh/chart: graylog-2.0.0
+  name: RELEASE-NAME-graylog
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: RELEASE-NAME
+      app.kubernetes.io/managed-by: Helm
+      app.kubernetes.io/name: graylog
+  serviceName: RELEASE-NAME-graylog
+  template:
+    metadata:
+      annotations: null
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: graylog
+        app.kubernetes.io/version: 4.2.3
+        helm.sh/chart: graylog-2.0.0
+    spec:
+      containers:
+      - command:
+        - /entrypoint.sh
+        env:
+        - name: GRAYLOG_SERVER_JAVA_OPTS
+          value: -Dlog4j2.formatMsgNoLookups=true -Djdk.tls.acknowledgeCloseNotify=true
+            -XX:+UnlockExperimentalVMOptions -XX:NewRatio=1 -XX:MaxMetaspaceSize=256m
+            -server -XX:+ResizeTLAB -XX:-OmitStackTraceInFastThrow -XX:+UnlockExperimentalVMOptions
+            -XX:+UseCGroupMemoryLimitForHeap
+        - name: GRAYLOG_PASSWORD_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: graylog-password-secret
+              name: RELEASE-NAME-graylog
+        - name: GRAYLOG_ROOT_PASSWORD_SHA2
+          valueFrom:
+            secretKeyRef:
+              key: graylog-password-sha2
+              name: RELEASE-NAME-graylog
+        image: graylog/graylog:4.2.3-1
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /api/system/lbstatus
+            port: 9000
+          initialDelaySeconds: 120
+          periodSeconds: 30
+          successThreshold: 1
+          timeoutSeconds: 5
+        name: graylog-server
+        ports:
+        - containerPort: 9000
+          name: graylog
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /api/system/lbstatus
+            port: 9000
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        resources:
+          limits:
+            cpu: "1"
+          requests:
+            cpu: 500m
+            memory: 1024Mi
+        securityContext:
+          privileged: false
+        volumeMounts:
+        - mountPath: /usr/share/graylog/data/journal
+          name: journal
+        - mountPath: /usr/share/graylog/config
+          name: config
+        - mountPath: /entrypoint.sh
+          name: entrypoint
+          subPath: entrypoint.sh
+        - mountPath: /k8s
+          name: kubectl
+      initContainers:
+      - command:
+        - /bin/sh
+        - -c
+        - |
+          rm -rf /usr/share/graylog/data/journal/lost+found
+          wget https://storage.googleapis.com/kubernetes-release/release/v1.20.0/bin/linux/amd64/kubectl -O /k8s/kubectl
+          chmod +x /k8s/kubectl
+
+          GRAYLOG_HOME=/usr/share/graylog
+          chown -R 1100:1100 ${GRAYLOG_HOME}/data/
+        env: null
+        image: alpine
+        imagePullPolicy: IfNotPresent
+        name: setup
+        volumeMounts:
+        - mountPath: /usr/share/graylog/data/journal
+          name: journal
+        - mountPath: /k8s
+          name: kubectl
+      securityContext: {}
+      serviceAccountName: RELEASE-NAME-graylog
+      terminationGracePeriodSeconds: 120
+      volumes:
+      - configMap:
+          items:
+          - key: graylog.conf
+            mode: 292
+            path: graylog.conf
+          - key: log4j2.xml
+            mode: 292
+            path: log4j2.xml
+          name: RELEASE-NAME-graylog
+        name: config
+      - configMap:
+          items:
+          - key: entrypoint.sh
+            mode: 365
+            path: entrypoint.sh
+          name: RELEASE-NAME-graylog
+        name: entrypoint
+      - emptyDir: {}
+        name: kubectl
+  updateStrategy:
+    type: RollingUpdate
+  volumeClaimTemplates:
+  - metadata:
+      name: journal
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 20Gi

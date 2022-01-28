@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: harbor
+    chart: harbor
+    component: notary-server
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-harbor-notary-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: harbor
+      component: notary-server
+      release: RELEASE-NAME
+  template:
+    metadata:
+      annotations:
+        checksum/secret: ba3ccfddb7a973b530d866245edecb2b609618a3624132455529259fa76a4d3b
+        checksum/secret-core: f8ff9a03aa874f203bf11d14525787f27edf7e5703f1127a9135a6c6137c33e4
+      labels:
+        app: harbor
+        chart: harbor
+        component: notary-server
+        heritage: Helm
+        release: RELEASE-NAME
+    spec:
+      automountServiceAccountToken: false
+      containers:
+      - env:
+        - name: MIGRATIONS_PATH
+          value: migrations/server/postgresql
+        - name: DB_URL
+          value: postgres://postgres:changeit@RELEASE-NAME-harbor-database:5432/notaryserver?sslmode=disable
+        image: goharbor/notary-server-photon:v2.4.1
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /_notary_server/health
+            port: 4443
+            scheme: HTTP
+          initialDelaySeconds: 300
+          periodSeconds: 10
+        name: notary-server
+        readinessProbe:
+          httpGet:
+            path: /_notary_server/health
+            port: 4443
+            scheme: HTTP
+          initialDelaySeconds: 20
+          periodSeconds: 10
+        volumeMounts:
+        - mountPath: /etc/notary/server-config.postgres.json
+          name: config
+          subPath: server.json
+        - mountPath: /root.crt
+          name: token-service-certificate
+          subPath: tls.crt
+        - mountPath: /etc/ssl/notary/ca.crt
+          name: signer-certificate
+          subPath: ca.crt
+      securityContext:
+        fsGroup: 10000
+        runAsUser: 10000
+      volumes:
+      - name: config
+        secret:
+          secretName: RELEASE-NAME-harbor-notary-server
+      - name: token-service-certificate
+        secret:
+          secretName: RELEASE-NAME-harbor-core
+      - name: signer-certificate
+        secret:
+          secretName: RELEASE-NAME-harbor-notary-server

@@ -1,0 +1,154 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: mariadb-galera
+    helm.sh/chart: mariadb-galera-6.2.2
+  name: RELEASE-NAME-mariadb-galera
+spec:
+  podManagementPolicy: OrderedReady
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: RELEASE-NAME
+      app.kubernetes.io/name: mariadb-galera
+  serviceName: RELEASE-NAME-mariadb-galera
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/name: mariadb-galera
+    spec:
+      affinity:
+        nodeAffinity: null
+        podAffinity: null
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: RELEASE-NAME
+                  app.kubernetes.io/name: mariadb-galera
+              namespaces:
+              - default
+              topologyKey: kubernetes.io/hostname
+            weight: 1
+      containers:
+      - command:
+        - bash
+        - -ec
+        - |
+          exec /opt/bitnami/scripts/mariadb-galera/entrypoint.sh /opt/bitnami/scripts/mariadb-galera/run.sh
+        env:
+        - name: MY_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: BITNAMI_DEBUG
+          value: "false"
+        - name: MARIADB_GALERA_CLUSTER_NAME
+          value: galera
+        - name: MARIADB_GALERA_CLUSTER_ADDRESS
+          value: gcomm://RELEASE-NAME-mariadb-galera-headless.default.svc.cluster.local
+        - name: MARIADB_ROOT_USER
+          value: root
+        - name: MARIADB_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: mariadb-root-password
+              name: RELEASE-NAME-mariadb-galera
+        - name: MARIADB_DATABASE
+          value: my_database
+        - name: MARIADB_GALERA_MARIABACKUP_USER
+          value: mariabackup
+        - name: MARIADB_GALERA_MARIABACKUP_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: mariadb-galera-mariabackup-password
+              name: RELEASE-NAME-mariadb-galera
+        - name: MARIADB_ENABLE_LDAP
+          value: "no"
+        - name: MARIADB_ENABLE_TLS
+          value: "no"
+        image: docker.io/bitnami/mariadb-galera:10.6.5-debian-10-r55
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          exec:
+            command:
+            - bash
+            - -ec
+            - |
+              password_aux="${MARIADB_ROOT_PASSWORD:-}"
+              if [[ -f "${MARIADB_ROOT_PASSWORD_FILE:-}" ]]; then
+                  password_aux=$(cat "$MARIADB_ROOT_PASSWORD_FILE")
+              fi
+              exec mysql -u"${MARIADB_ROOT_USER}" -p"${password_aux}" -e "select * from mysql.wsrep_cluster_members;"
+          failureThreshold: 3
+          initialDelaySeconds: 120
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: mariadb-galera
+        ports:
+        - containerPort: 3306
+          name: mysql
+        - containerPort: 4567
+          name: galera
+        - containerPort: 4568
+          name: ist
+        - containerPort: 4444
+          name: sst
+        readinessProbe:
+          exec:
+            command:
+            - bash
+            - -ec
+            - |
+              password_aux="${MARIADB_ROOT_PASSWORD:-}"
+              if [[ -f "${MARIADB_ROOT_PASSWORD_FILE:-}" ]]; then
+                  password_aux=$(cat "$MARIADB_ROOT_PASSWORD_FILE")
+              fi
+              exec mysqladmin status -u"${MARIADB_ROOT_USER}" -p"${password_aux}"
+          failureThreshold: 3
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources:
+          limits: {}
+          requests: {}
+        volumeMounts:
+        - mountPath: /opt/bitnami/mariadb/.bootstrap
+          name: previous-boot
+        - mountPath: /bitnami/mariadb
+          name: data
+        - mountPath: /bitnami/conf/my.cnf
+          name: mariadb-galera-config
+          subPath: my.cnf
+      securityContext:
+        fsGroup: 1001
+        runAsUser: 1001
+      serviceAccountName: default
+      volumes:
+      - emptyDir: {}
+        name: previous-boot
+      - configMap:
+          name: RELEASE-NAME-mariadb-galera-configuration
+        name: mariadb-galera-config
+  updateStrategy:
+    type: RollingUpdate
+  volumeClaimTemplates:
+  - metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: mariadb-galera
+      name: data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 8Gi

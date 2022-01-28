@@ -1,0 +1,136 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: harbor
+    chart: harbor
+    component: registry
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-harbor-registry
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: harbor
+      component: registry
+      release: RELEASE-NAME
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        checksum/configmap: 2bfd0a1c40e9fc030488d6de0af71241d6e89f6e8c153d028bb96d120e1d853b
+        checksum/secret: 1ab9ba23d13bf787ddd221d707544cd94544d182c9d2a38808a4699ebc69e5e9
+        checksum/secret-core: 59d9be6c03e614cc5173e096af0acef1e95cf9710969f04507e4e35e779fcd02
+        checksum/secret-jobservice: 2cc4dd819dcc530ea7faa47dab637eec460586bea7e2bab081d85b39a6d8be8f
+      labels:
+        app: harbor
+        chart: harbor
+        component: registry
+        heritage: Helm
+        release: RELEASE-NAME
+    spec:
+      automountServiceAccountToken: false
+      containers:
+      - args:
+        - serve
+        - /etc/registry/config.yml
+        env: null
+        envFrom:
+        - secretRef:
+            name: RELEASE-NAME-harbor-registry
+        image: goharbor/registry-photon:v2.4.1
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 5000
+            scheme: HTTP
+          initialDelaySeconds: 300
+          periodSeconds: 10
+        name: registry
+        ports:
+        - containerPort: 5000
+        - containerPort: 5001
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 5000
+            scheme: HTTP
+          initialDelaySeconds: 1
+          periodSeconds: 10
+        volumeMounts:
+        - mountPath: /storage
+          name: registry-data
+          subPath: null
+        - mountPath: /etc/registry/passwd
+          name: registry-htpasswd
+          subPath: passwd
+        - mountPath: /etc/registry/config.yml
+          name: registry-config
+          subPath: config.yml
+      - env:
+        - name: CORE_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: secret
+              name: RELEASE-NAME-harbor-core
+        - name: JOBSERVICE_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: JOBSERVICE_SECRET
+              name: RELEASE-NAME-harbor-jobservice
+        envFrom:
+        - configMapRef:
+            name: RELEASE-NAME-harbor-registryctl
+        - secretRef:
+            name: RELEASE-NAME-harbor-registry
+        - secretRef:
+            name: RELEASE-NAME-harbor-registryctl
+        image: goharbor/harbor-registryctl:v2.4.1
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 300
+          periodSeconds: 10
+        name: registryctl
+        ports:
+        - containerPort: 8080
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 1
+          periodSeconds: 10
+        volumeMounts:
+        - mountPath: /storage
+          name: registry-data
+          subPath: null
+        - mountPath: /etc/registry/config.yml
+          name: registry-config
+          subPath: config.yml
+        - mountPath: /etc/registryctl/config.yml
+          name: registry-config
+          subPath: ctl-config.yml
+      securityContext:
+        fsGroup: 10000
+        runAsUser: 10000
+      terminationGracePeriodSeconds: 120
+      volumes:
+      - name: registry-htpasswd
+        secret:
+          items:
+          - key: REGISTRY_HTPASSWD
+            path: passwd
+          secretName: RELEASE-NAME-harbor-registry-htpasswd
+      - configMap:
+          name: RELEASE-NAME-harbor-registry
+        name: registry-config
+      - name: registry-data
+        persistentVolumeClaim:
+          claimName: RELEASE-NAME-harbor-registry

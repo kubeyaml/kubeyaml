@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: RELEASE-NAME-worker
+    chart: concourse-16.1.16
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-worker
+spec:
+  clusterIP: None
+  ports: []
+  selector:
+    app: RELEASE-NAME-worker
+  type: ClusterIP

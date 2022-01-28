@@ -1,3 +1,0 @@
-helmCharts:
-- name: nginx
-  repo: https://charts.bitnami.com/bitnami

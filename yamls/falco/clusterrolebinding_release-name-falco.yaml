@@ -1,0 +1,17 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app: RELEASE-NAME-falco
+    chart: falco-1.16.4
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-falco
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: RELEASE-NAME-falco
+subjects:
+- kind: ServiceAccount
+  name: RELEASE-NAME-falco
+  namespace: default

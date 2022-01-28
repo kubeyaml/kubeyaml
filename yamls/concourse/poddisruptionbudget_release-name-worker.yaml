@@ -1,0 +1,14 @@
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  labels:
+    app: RELEASE-NAME-worker
+    chart: concourse-16.1.16
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-worker
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: RELEASE-NAME-worker

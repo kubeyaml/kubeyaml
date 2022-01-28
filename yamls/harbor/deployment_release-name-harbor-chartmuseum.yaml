@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: harbor
+    chart: harbor
+    component: chartmuseum
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-harbor-chartmuseum
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: harbor
+      component: chartmuseum
+      release: RELEASE-NAME
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        checksum/configmap: 323ecc2bc644bcd639bad5cb17113644ed57fc03cd350d867593d9a5360e0b39
+        checksum/secret: eedbdc2cec3014448f8a4a11a2e66285ed85bf31db6653175f19c39376e852af
+        checksum/secret-core: 399f25aedd09e67fe4bd925cbefce1daa5eebba94748358ec65754110ccfdd56
+      labels:
+        app: harbor
+        chart: harbor
+        component: chartmuseum
+        heritage: Helm
+        release: RELEASE-NAME
+    spec:
+      automountServiceAccountToken: false
+      containers:
+      - env:
+        - name: BASIC_AUTH_PASS
+          valueFrom:
+            secretKeyRef:
+              key: secret
+              name: RELEASE-NAME-harbor-core
+        - name: AWS_SDK_LOAD_CONFIG
+          value: "1"
+        envFrom:
+        - configMapRef:
+            name: RELEASE-NAME-harbor-chartmuseum
+        - secretRef:
+            name: RELEASE-NAME-harbor-chartmuseum
+        image: goharbor/chartmuseum-photon:v2.4.1
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 9999
+            scheme: HTTP
+          initialDelaySeconds: 300
+          periodSeconds: 10
+        name: chartmuseum
+        ports:
+        - containerPort: 9999
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 9999
+            scheme: HTTP
+          initialDelaySeconds: 1
+          periodSeconds: 10
+        volumeMounts:
+        - mountPath: /chart_storage
+          name: chartmuseum-data
+          subPath: null
+      securityContext:
+        fsGroup: 10000
+        runAsUser: 10000
+      volumes:
+      - name: chartmuseum-data
+        persistentVolumeClaim:
+          claimName: RELEASE-NAME-harbor-chartmuseum

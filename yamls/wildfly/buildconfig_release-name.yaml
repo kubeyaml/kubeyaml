@@ -1,0 +1,44 @@
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: wildfly
+    app.kubernetes.io/version: "26.0"
+    helm.sh/chart: wildfly-1.5.4
+  name: RELEASE-NAME
+spec:
+  output:
+    to:
+      kind: ImageStreamTag
+      name: RELEASE-NAME:latest
+  source:
+    dockerfile: |-
+      FROM quay.io/wildfly/wildfly-runtime-centos7:26.0
+      COPY /server $JBOSS_HOME
+      USER root
+      RUN chown -R jboss:root $JBOSS_HOME && chmod -R ug+rwX $JBOSS_HOME
+      USER jboss
+      CMD $JBOSS_HOME/bin/openshift-launch.sh
+    images:
+    - from:
+        kind: ImageStreamTag
+        name: RELEASE-NAME-build-artifacts:latest
+      paths:
+      - destinationDir: .
+        sourcePath: /s2i-output/server/
+    type: Docker
+  strategy:
+    dockerStrategy:
+      from:
+        kind: DockerImage
+        name: quay.io/wildfly/wildfly-runtime-centos7:26.0
+    type: Docker
+  triggers:
+  - imageChange:
+      from:
+        kind: ImageStreamTag
+        name: RELEASE-NAME-build-artifacts:latest
+    type: ImageChange
+  - type: ConfigChange

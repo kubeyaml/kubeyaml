@@ -1,0 +1,300 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: distribution
+    chart: distribution-102.10.5
+    component: distribution
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-distribution
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: distribution
+      release: RELEASE-NAME
+      role: distribution
+  serviceName: RELEASE-NAME-distribution-headless
+  template:
+    metadata:
+      annotations:
+        checksum/database-secrets: 3a0da4d00ecb28d8cedd419dc846a1859909ce4e32b9a0a62867432b95157841
+        checksum/systemyaml: b725a33f49582f3e43d080a7276aaf8983fa955c11b603791e030dd52d67e4ee
+      labels:
+        app: distribution
+        chart: distribution-102.10.5
+        component: distribution
+        release: RELEASE-NAME
+        role: distribution
+    spec:
+      containers:
+      - command:
+        - /bin/bash
+        - -c
+        - |
+          exec /opt/jfrog/distribution/app/bin/wrapper.sh;
+        env:
+        - name: JF_SHARED_DATABASE_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: db-user
+              name: RELEASE-NAME-distribution-database-creds
+        - name: JF_SHARED_DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: db-password
+              name: RELEASE-NAME-distribution-database-creds
+        - name: JF_SHARED_DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              key: db-url
+              name: RELEASE-NAME-distribution-database-creds
+        - name: JF_SHARED_REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: redis-password
+              name: RELEASE-NAME-distribution
+        - name: JF_SHARED_REDIS_CONNECTIONSTRING
+          value: redis://localhost:6379
+        image: releases-docker.jfrog.io/jfrog/distribution-distribution:2.10.5
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 10
+          httpGet:
+            path: /api/v1/system/ping
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: distribution
+        ports:
+        - containerPort: 8080
+          name: http-distro
+        readinessProbe:
+          failureThreshold: 10
+          httpGet:
+            path: /api/v1/system/ping
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources: {}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - NET_RAW
+          runAsNonRoot: true
+          runAsUser: 1020
+        startupProbe:
+          failureThreshold: 60
+          httpGet:
+            path: /api/v1/system/ping
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 60
+          periodSeconds: 5
+          timeoutSeconds: 1
+        volumeMounts:
+        - mountPath: /var/opt/jfrog/distribution
+          name: distribution-data
+      - command:
+        - /bin/sh
+        - -c
+        - |
+          exec /opt/jfrog/router/app/bin/entrypoint-router.sh;
+        image: releases-docker.jfrog.io/jfrog/router:7.28.2
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 10
+          httpGet:
+            path: /router/api/v1/system/health
+            port: 8082
+            scheme: HTTP
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: router
+        ports:
+        - containerPort: 8082
+          name: http-router
+        readinessProbe:
+          failureThreshold: 10
+          httpGet:
+            path: /router/api/v1/system/health
+            port: 8082
+            scheme: HTTP
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources: {}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - NET_RAW
+          runAsNonRoot: true
+        startupProbe:
+          failureThreshold: 60
+          httpGet:
+            path: /router/api/v1/system/health
+            port: 8082
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          timeoutSeconds: 1
+        volumeMounts:
+        - mountPath: /var/opt/jfrog/router
+          name: distribution-data
+      - env:
+        - name: REDIS_REPLICATION_MODE
+          value: master
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: redis-password
+              name: RELEASE-NAME-distribution
+        - name: REDIS_PORT
+          value: "6379"
+        - name: REDIS_DISABLE_COMMANDS
+          value: FLUSHDB,FLUSHALL
+        image: releases-docker.jfrog.io/bitnami/redis:6.2.6-debian-10-r43
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 30
+          timeoutSeconds: 1
+        name: redis
+        ports:
+        - containerPort: 6379
+          name: redis
+        readinessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 10
+          timeoutSeconds: 1
+        resources: {}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - NET_RAW
+          runAsNonRoot: true
+        volumeMounts:
+        - mountPath: /bitnami/redis/data
+          name: redis-data
+      initContainers:
+      - command:
+        - /bin/bash
+        - -c
+        - |
+          until nc -z -w 5 RELEASE-NAME-artifactory 8082; do echo "Waiting for artifactory to start"; sleep 10; done; echo "Running init db scripts"; su postgres -c "bash /scripts/setupPostgres.sh"
+        env:
+        - name: PGUSERNAME
+          value: postgres
+        - name: DB_HOST
+          value: RELEASE-NAME-postgresql
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_SSL_MODE
+          value: disable
+        - name: DB_NAME
+          value: distribution
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: db-user
+              name: RELEASE-NAME-distribution-database-creds
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: db-password
+              name: RELEASE-NAME-distribution-database-creds
+        - name: PGPASSWORD
+          value: postgres
+        - name: CHART_NAME
+          value: distribution
+        image: releases-docker.jfrog.io/postgres:13.4-alpine
+        imagePullPolicy: Always
+        name: postgres-setup-init
+        securityContext:
+          runAsUser: 0
+        volumeMounts:
+        - mountPath: /scripts
+          name: postgres-setup-init-vol
+      - command:
+        - /bin/sh
+        - -c
+        - |
+          sleep 30; echo "Copy system.yaml to /var/opt/jfrog/distribution/etc"; mkdir -p /var/opt/jfrog/distribution/etc; cp -fv /tmp/etc/system.yaml /var/opt/jfrog/distribution/etc/system.yaml; echo "Remove /var/opt/jfrog/distribution/lost+found folder if exists"; rm -rfv /var/opt/jfrog/distribution/lost+found; echo "Copy joinKey to /var/opt/jfrog/distribution/etc/security"; mkdir -p /var/opt/jfrog/distribution/etc/security; echo ${DISTRIBUTION_JOIN_KEY} > /var/opt/jfrog/distribution/etc/security/join.key; echo "Copy masterKey to /var/opt/jfrog/distribution/etc/security"; mkdir -p /var/opt/jfrog/distribution/etc/security; echo ${DISTRIBUTION_MASTER_KEY} > /var/opt/jfrog/distribution/etc/security/master.key;
+        env:
+        - name: DISTRIBUTION_JOIN_KEY
+          valueFrom:
+            secretKeyRef:
+              key: join-key
+              name: RELEASE-NAME-distribution
+        - name: DISTRIBUTION_MASTER_KEY
+          valueFrom:
+            secretKeyRef:
+              key: master-key
+              name: RELEASE-NAME-distribution
+        image: releases-docker.jfrog.io/jfrog/ubi-minimal:8.5-204
+        name: copy-system-yaml
+        resources:
+          limits:
+            cpu: "1"
+            memory: 1Gi
+          requests:
+            cpu: 10m
+            memory: 50Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - NET_RAW
+          runAsNonRoot: true
+        volumeMounts:
+        - mountPath: /var/opt/jfrog/distribution
+          name: distribution-data
+        - mountPath: /tmp/etc/system.yaml
+          name: systemyaml
+          subPath: system.yaml
+      securityContext:
+        fsGroup: 1020
+        runAsUser: 1020
+      serviceAccountName: default
+      volumes:
+      - configMap:
+          name: RELEASE-NAME-setup-script
+        name: postgres-setup-init-vol
+      - emptyDir:
+          sizeLimit: 50Gi
+        name: distribution-data
+      - emptyDir: {}
+        name: redis-data
+      - name: systemyaml
+        secret:
+          secretName: RELEASE-NAME-distribution-systemyaml
+  updateStrategy:
+    type: RollingUpdate
+  volumeClaimTemplates:
+  - metadata:
+      name: redis-data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 10Gi

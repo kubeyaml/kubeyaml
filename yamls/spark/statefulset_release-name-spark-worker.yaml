@@ -1,0 +1,94 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app.kubernetes.io/component: worker
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: spark
+    helm.sh/chart: spark-5.8.4
+  name: RELEASE-NAME-spark-worker
+spec:
+  podManagementPolicy: OrderedReady
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: worker
+      app.kubernetes.io/instance: RELEASE-NAME
+      app.kubernetes.io/name: spark
+  serviceName: RELEASE-NAME-spark-headless
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: worker
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: spark
+        helm.sh/chart: spark-5.8.4
+    spec:
+      affinity:
+        nodeAffinity: null
+        podAffinity: null
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/component: worker
+                  app.kubernetes.io/instance: RELEASE-NAME
+                  app.kubernetes.io/name: spark
+              namespaces:
+              - default
+              topologyKey: kubernetes.io/hostname
+            weight: 1
+      containers:
+      - env:
+        - name: SPARK_MODE
+          value: worker
+        - name: BITNAMI_DEBUG
+          value: "false"
+        - name: SPARK_DAEMON_MEMORY
+          value: ""
+        - name: SPARK_WORKER_WEBUI_PORT
+          value: "8081"
+        - name: SPARK_DAEMON_JAVA_OPTS
+          value: ""
+        - name: SPARK_MASTER_URL
+          value: spark://RELEASE-NAME-spark-master-svc:7077
+        - name: SPARK_WORKER_OPTS
+          value: null
+        image: docker.io/bitnami/spark:3.2.0-debian-10-r73
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 6
+          httpGet:
+            path: /
+            port: 8081
+          initialDelaySeconds: 180
+          periodSeconds: 20
+          successThreshold: 1
+          timeoutSeconds: 5
+        name: spark-worker
+        ports:
+        - containerPort: 8081
+          name: http
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 6
+          httpGet:
+            path: /
+            port: 8081
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        resources:
+          limits: {}
+          requests: {}
+        volumeMounts: null
+      securityContext:
+        fsGroup: 1001
+        runAsGroup: 0
+        runAsUser: 1001
+      serviceAccountName: RELEASE-NAME-spark
+      volumes: null

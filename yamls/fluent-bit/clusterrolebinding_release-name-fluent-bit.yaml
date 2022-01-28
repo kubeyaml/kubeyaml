@@ -1,0 +1,18 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: fluent-bit
+    app.kubernetes.io/version: 1.8.12
+    helm.sh/chart: fluent-bit-0.19.18
+  name: RELEASE-NAME-fluent-bit
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: RELEASE-NAME-fluent-bit
+subjects:
+- kind: ServiceAccount
+  name: RELEASE-NAME-fluent-bit
+  namespace: default

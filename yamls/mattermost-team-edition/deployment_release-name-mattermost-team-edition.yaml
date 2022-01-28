@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: mattermost-team-edition
+    helm.sh/chart: mattermost-team-edition-6.3.0
+  name: RELEASE-NAME-mattermost-team-edition
+spec:
+  replicas: 1
+  revisionHistoryLimit: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: RELEASE-NAME
+      app.kubernetes.io/managed-by: Helm
+      app.kubernetes.io/name: mattermost-team-edition
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        checksum/config: f7055765d11d5604fe666571c19e4ef4e20f530d2bfabe8136a4bf535f70a4e5
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: mattermost-team-edition
+        helm.sh/chart: mattermost-team-edition-6.3.0
+    spec:
+      containers:
+      - env:
+        - name: MM_CONFIG
+          valueFrom:
+            secretKeyRef:
+              key: mattermost.dbsecret
+              name: RELEASE-NAME-mattermost-team-edition-mattermost-dbsecret
+        envFrom:
+        - secretRef:
+            name: RELEASE-NAME-mattermost-team-edition-config
+        image: mattermost/mattermost-team-edition:6.3.0@sha256:56b6294ddc37171a4e6efb30748845585dab0a58fd31bd53e96ad6417eb8a96f
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /api/v4/system/ping
+            port: http
+          initialDelaySeconds: 90
+          periodSeconds: 15
+          timeoutSeconds: 5
+        name: mattermost-team-edition
+        ports:
+        - containerPort: 8065
+          name: http
+          protocol: TCP
+        readinessProbe:
+          httpGet:
+            path: /api/v4/system/ping
+            port: http
+          initialDelaySeconds: 15
+          periodSeconds: 15
+          timeoutSeconds: 5
+        resources: null
+        volumeMounts:
+        - mountPath: /mattermost/config
+          name: mattermost-config
+        - mountPath: /mattermost/data
+          name: mattermost-data
+        - mountPath: /mattermost/client/plugins
+          name: mattermost-plugins
+      initContainers:
+      - command:
+        - sh
+        - -c
+        - until curl --max-time 10 http://RELEASE-NAME-mysql:3306; do echo waiting
+          for RELEASE-NAME-mysql; sleep 5; done;
+        image: appropriate/curl:latest
+        imagePullPolicy: IfNotPresent
+        name: init-mysql
+      volumes:
+      - emptyDir: {}
+        name: mattermost-config
+      - name: mattermost-data
+        persistentVolumeClaim:
+          claimName: RELEASE-NAME-mattermost-team-edition
+      - name: mattermost-plugins
+        persistentVolumeClaim:
+          claimName: RELEASE-NAME-mattermost-team-edition-plugins

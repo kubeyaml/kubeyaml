@@ -1,0 +1,44 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: voyager
+    app.kubernetes.io/version: v14.1.0
+    helm.sh/chart: voyager-v2022.01.10
+  name: admission.voyager.appscode.com
+webhooks:
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    caBundle: bm90LWNhLWNlcnQ=
+    service:
+      name: kubernetes
+      namespace: default
+      path: /apis/admission.voyager.appscode.com/v1/admissionreviews
+  failurePolicy: Fail
+  name: admission.voyager.appscode.com
+  rules:
+  - apiGroups:
+    - voyager.appscode.com
+    apiVersions:
+    - '*'
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - '*'
+  - apiGroups:
+    - networking.k8s.io
+    apiVersions:
+    - '*'
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - ingresses
+  sideEffects: None

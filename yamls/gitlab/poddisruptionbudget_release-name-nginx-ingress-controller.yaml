@@ -1,0 +1,22 @@
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  labels:
+    app: nginx-ingress
+    app.kubernetes.io/component: controller
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/version: 1.0.4
+    chart: nginx-ingress-4.0.6
+    component: controller
+    helm.sh/chart: nginx-ingress-4.0.6
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-nginx-ingress-controller
+  namespace: default
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: nginx-ingress
+      component: controller
+      release: RELEASE-NAME

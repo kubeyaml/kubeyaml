@@ -1,0 +1,16 @@
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  labels:
+    app: gitlab-shell
+    chart: gitlab-shell-5.7.0
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-gitlab-shell
+  namespace: default
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: gitlab-shell
+      release: RELEASE-NAME

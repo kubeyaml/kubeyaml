@@ -1,0 +1,18 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: cockroachdb
+    helm.sh/chart: cockroachdb-7.0.0
+  name: RELEASE-NAME-cockroachdb-rotate-self-signer
+  namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: RELEASE-NAME-cockroachdb-rotate-self-signer
+subjects:
+- kind: ServiceAccount
+  name: RELEASE-NAME-cockroachdb-rotate-self-signer
+  namespace: default

@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    component: selenium-grid-4
+    name: selenium-distributor
+  name: selenium-distributor
+spec:
+  ports:
+  - name: port1
+    port: 5553
+    protocol: TCP
+    targetPort: 5553
+  selector:
+    app: selenium-distributor

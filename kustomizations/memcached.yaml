@@ -1,3 +1,0 @@
-helmCharts:
-- name: memcached
-  repo: https://charts.bitnami.com/bitnami

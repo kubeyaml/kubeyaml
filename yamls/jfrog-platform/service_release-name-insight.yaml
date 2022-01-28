@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: insight
+    chart: insight-101.3.0
+    component: insight-server
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-insight
+spec:
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: 8087
+  - name: http-router
+    port: 8082
+    protocol: TCP
+    targetPort: 8082
+  - name: tcp-estransport
+    port: 9300
+    targetPort: 9300
+  publishNotReadyAddresses: true
+  selector:
+    app: insight
+    component: insight-server
+    release: RELEASE-NAME
+  type: ClusterIP

@@ -1,0 +1,146 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app.kubernetes.io/component: cockroachdb
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: cockroachdb
+    helm.sh/chart: cockroachdb-7.0.0
+  name: RELEASE-NAME-cockroachdb
+  namespace: default
+spec:
+  podManagementPolicy: Parallel
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: cockroachdb
+      app.kubernetes.io/instance: RELEASE-NAME
+      app.kubernetes.io/name: cockroachdb
+  serviceName: RELEASE-NAME-cockroachdb
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: cockroachdb
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/name: cockroachdb
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/component: cockroachdb
+                  app.kubernetes.io/instance: RELEASE-NAME
+                  app.kubernetes.io/name: cockroachdb
+              topologyKey: kubernetes.io/hostname
+            weight: 100
+      containers:
+      - args:
+        - shell
+        - -ecx
+        - exec /cockroach/cockroach start --join=${STATEFULSET_NAME}-0.${STATEFULSET_FQDN}:26257,${STATEFULSET_NAME}-1.${STATEFULSET_FQDN}:26257,${STATEFULSET_NAME}-2.${STATEFULSET_FQDN}:26257
+          --advertise-host=$(hostname).${STATEFULSET_FQDN} --certs-dir=/cockroach/cockroach-certs/
+          --http-port=8080 --port=26257 --cache=25% --max-sql-memory=25% --logtostderr=INFO
+        env:
+        - name: STATEFULSET_NAME
+          value: RELEASE-NAME-cockroachdb
+        - name: STATEFULSET_FQDN
+          value: RELEASE-NAME-cockroachdb.default.svc.cluster.local
+        - name: COCKROACH_CHANNEL
+          value: kubernetes-helm
+        image: cockroachdb/cockroach:v21.2.4
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+            scheme: HTTPS
+          initialDelaySeconds: 30
+          periodSeconds: 5
+        name: db
+        ports:
+        - containerPort: 26257
+          name: grpc
+          protocol: TCP
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 2
+          httpGet:
+            path: /health?ready=1
+            port: http
+            scheme: HTTPS
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        volumeMounts:
+        - mountPath: /cockroach/cockroach-data/
+          name: datadir
+        - mountPath: /cockroach/cockroach-certs/
+          name: certs
+      initContainers:
+      - command:
+        - /bin/sh
+        - -c
+        - cp -f /certs/* /cockroach-certs/; chmod 0400 /cockroach-certs/*.key
+        env:
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        image: busybox
+        imagePullPolicy: IfNotPresent
+        name: copy-certs
+        volumeMounts:
+        - mountPath: /cockroach-certs/
+          name: certs
+        - mountPath: /certs/
+          name: certs-secret
+      serviceAccountName: RELEASE-NAME-cockroachdb
+      terminationGracePeriodSeconds: 60
+      topologySpreadConstraints:
+      - labelSelector:
+          matchLabels:
+            app.kubernetes.io/component: cockroachdb
+            app.kubernetes.io/instance: RELEASE-NAME
+            app.kubernetes.io/name: cockroachdb
+        maxSkew: 1
+        topologyKey: topology.kubernetes.io/zone
+        whenUnsatisfiable: ScheduleAnyway
+      volumes:
+      - name: datadir
+        persistentVolumeClaim:
+          claimName: datadir
+      - emptyDir: {}
+        name: certs
+      - name: certs-secret
+        projected:
+          sources:
+          - secret:
+              items:
+              - key: ca.crt
+                mode: 256
+                path: ca.crt
+              - key: tls.crt
+                mode: 256
+                path: node.crt
+              - key: tls.key
+                mode: 256
+                path: node.key
+              name: RELEASE-NAME-cockroachdb-node-secret
+  updateStrategy:
+    type: RollingUpdate
+  volumeClaimTemplates:
+  - metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/name: cockroachdb
+      name: datadir
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 100Gi

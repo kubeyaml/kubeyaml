@@ -1,3 +1,0 @@
-helmCharts:
-- name: mariadb
-  repo: https://charts.bitnami.com/bitnami

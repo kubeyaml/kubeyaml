@@ -1,0 +1,19 @@
+apiVersion: v1
+data:
+  run.sh: |-
+    @test "Test Health" {
+      url="http://RELEASE-NAME-grafana/api/health"
+
+      code=$(wget --server-response --spider --timeout 10 --tries 1 ${url} 2>&1 | awk '/^  HTTP/{print $2}')
+      [ "$code" == "200" ]
+    }
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/version: 8.3.4
+    helm.sh/chart: grafana-6.21.0
+  name: RELEASE-NAME-grafana-test
+  namespace: default

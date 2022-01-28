@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/component: mongodb
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: mongodb
+    helm.sh/chart: mongodb-11.0.0
+  name: RELEASE-NAME-mongodb
+  namespace: default
+spec:
+  ports:
+  - name: mongodb
+    nodePort: null
+    port: 27017
+    targetPort: mongodb
+  selector:
+    app.kubernetes.io/component: mongodb
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/name: mongodb
+  type: ClusterIP

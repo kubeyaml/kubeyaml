@@ -1,3 +1,0 @@
-helmCharts:
-- name: grafana
-  repo: https://grafana.github.io/helm-charts

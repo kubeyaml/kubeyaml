@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations: null
+  labels:
+    app: gitaly
+    chart: gitaly-5.7.0
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-gitaly
+  namespace: default
+spec:
+  clusterIP: None
+  ports:
+  - name: gitaly
+    port: 8075
+    targetPort: grcp-gitaly
+  selector:
+    app: gitaly
+    release: RELEASE-NAME
+  type: ClusterIP

@@ -1,0 +1,44 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: metallb
+    app.kubernetes.io/version: v0.11.0
+    helm.sh/chart: metallb-0.11.0
+  name: RELEASE-NAME-metallb:speaker
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - services
+  - endpoints
+  - nodes
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - discovery.k8s.io
+  resources:
+  - endpointslices
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+- apiGroups:
+  - policy
+  resourceNames:
+  - RELEASE-NAME-metallb-speaker
+  resources:
+  - podsecuritypolicies
+  verbs:
+  - use

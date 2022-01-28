@@ -1,0 +1,133 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations: null
+  labels:
+    app: registry
+    chart: registry-0.7.0
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-registry
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: registry
+      release: RELEASE-NAME
+  template:
+    metadata:
+      annotations:
+        checksum/configmap: 7def8fe48929591181eb66c07877b7375d310df9374b62ecd425a62442e20f96
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
+      labels:
+        app: registry
+        chart: registry-0.7.0
+        heritage: Helm
+        release: RELEASE-NAME
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: registry
+                  release: RELEASE-NAME
+              topologyKey: kubernetes.io/hostname
+            weight: 1
+      automountServiceAccountToken: false
+      containers:
+      - env: null
+        image: registry.gitlab.com/gitlab-org/build/cng/gitlab-container-registry:v3.22.0-gitlab
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - /bin/bash
+              - -c
+              - sleep 5
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /debug/health
+            port: 5001
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: registry
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /debug/health
+            port: 5001
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources:
+          requests:
+            cpu: 50m
+            memory: 32Mi
+        volumeMounts:
+        - mountPath: /etc/docker/registry/
+          name: registry-server-config
+          readOnly: true
+        - mountPath: /etc/ssl/certs/
+          name: etc-ssl-certs
+          readOnly: true
+      initContainers:
+      - env: null
+        image: registry.gitlab.com/gitlab-org/build/cng/alpine-certificates:20191127-r2
+        name: certificates
+        resources:
+          requests:
+            cpu: 50m
+        volumeMounts:
+        - mountPath: /etc/ssl/certs
+          name: etc-ssl-certs
+          readOnly: false
+      - command:
+        - sh
+        - /config/configure
+        env: null
+        image: registry.gitlab.com/gitlab-org/cloud-native/mirror/images/busybox:latest
+        name: configure
+        resources:
+          requests:
+            cpu: 50m
+        volumeMounts:
+        - mountPath: /config
+          name: registry-secrets
+        - mountPath: /registry
+          name: registry-server-config
+      securityContext:
+        fsGroup: 1000
+        runAsUser: 1000
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - emptyDir:
+          medium: Memory
+        name: registry-server-config
+      - name: registry-secrets
+        projected:
+          sources:
+          - configMap:
+              name: RELEASE-NAME-registry
+          - secret:
+              items:
+              - key: registry-auth.crt
+                path: certificate.crt
+              name: RELEASE-NAME-registry-secret
+          - secret:
+              items:
+              - key: secret
+                path: httpSecret
+              name: RELEASE-NAME-registry-httpsecret
+          - secret:
+              name: RELEASE-NAME-minio-secret
+      - emptyDir:
+          medium: Memory
+        name: etc-ssl-certs

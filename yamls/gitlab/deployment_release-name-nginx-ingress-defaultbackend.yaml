@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: nginx-ingress
+    app.kubernetes.io/component: default-backend
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/version: 1.0.4
+    chart: nginx-ingress-4.0.6
+    component: defaultbackend
+    helm.sh/chart: nginx-ingress-4.0.6
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-nginx-ingress-defaultbackend
+  namespace: default
+spec:
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: nginx-ingress
+      component: defaultbackend
+      release: RELEASE-NAME
+  template:
+    metadata:
+      labels:
+        app: nginx-ingress
+        component: defaultbackend
+        release: RELEASE-NAME
+    spec:
+      containers:
+      - image: registry.gitlab.com/gitlab-org/cloud-native/mirror/images/defaultbackend-amd64:1.5@sha256:4dc5e07c8ca4e23bddb3153737d7b8c556e5fb2f29c4558b7cd6e6df99c512c7
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /healthz
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        name: nginx-ingress-default-backend
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 6
+          httpGet:
+            path: /healthz
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 0
+          periodSeconds: 5
+          successThreshold: 1
+          timeoutSeconds: 5
+        resources:
+          requests:
+            cpu: 5m
+            memory: 5Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 65534
+      serviceAccountName: RELEASE-NAME-nginx-ingress-backend
+      terminationGracePeriodSeconds: 60

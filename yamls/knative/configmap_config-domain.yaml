@@ -1,0 +1,9 @@
+apiVersion: v1
+data:
+  example.com: ""
+kind: ConfigMap
+metadata:
+  labels:
+    serving.knative.dev/release: devel
+  name: config-domain
+  namespace: knative-serving

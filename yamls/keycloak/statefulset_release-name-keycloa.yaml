@@ -1,0 +1,117 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app.kubernetes.io/component: keycloak
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: keycloak
+    helm.sh/chart: keycloak-6.1.1
+  name: RELEASE-NAME-keycloa
+  namespace: default
+spec:
+  podManagementPolicy: Parallel
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: keycloak
+      app.kubernetes.io/instance: RELEASE-NAME
+      app.kubernetes.io/name: keycloak
+  serviceName: RELEASE-NAME-keycloa-headless
+  template:
+    metadata:
+      annotations:
+        checksum/configmap-env-vars: 59ef225a8c2a40c567e0eab9da34b78f96faa2f88d0d5e0318335cdec64f762a
+        checksum/secrets: e116111eb1132e67ed8a79eebef90638a4ad6d2e2d5edc45236e926fd9c7d1f8
+      labels:
+        app.kubernetes.io/component: keycloak
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: keycloak
+        helm.sh/chart: keycloak-6.1.1
+    spec:
+      affinity:
+        nodeAffinity: null
+        podAffinity: null
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: RELEASE-NAME
+                  app.kubernetes.io/name: keycloak
+              namespaces:
+              - default
+              topologyKey: kubernetes.io/hostname
+            weight: 1
+      containers:
+      - env:
+        - name: KUBERNETES_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        - name: BITNAMI_DEBUG
+          value: "false"
+        - name: KEYCLOAK_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: admin-password
+              name: RELEASE-NAME-keycloak
+        - name: KEYCLOAK_MANAGEMENT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: management-password
+              name: RELEASE-NAME-keycloak
+        - name: KEYCLOAK_DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: postgresql-password
+              name: RELEASE-NAME-postgresql
+        envFrom:
+        - configMapRef:
+            name: RELEASE-NAME-keycloa-env-vars
+        image: docker.io/bitnami/keycloak:16.1.1-debian-10-r0
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /auth/
+            port: http
+          initialDelaySeconds: 300
+          periodSeconds: 1
+          successThreshold: 1
+          timeoutSeconds: 5
+        name: keycloak
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        - containerPort: 8443
+          name: https
+          protocol: TCP
+        - containerPort: 9990
+          name: http-management
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /auth/realms/master
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources:
+          limits: {}
+          requests: {}
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+        volumeMounts: null
+      securityContext:
+        fsGroup: 1001
+      serviceAccountName: RELEASE-NAME-keycloa
+      volumes: null
+  updateStrategy:
+    type: RollingUpdate

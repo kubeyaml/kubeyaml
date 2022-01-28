@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: dask
+    chart: dask-2022.1.1
+    component: jupyter
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-dask-jupyter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dask
+      component: jupyter
+      release: RELEASE-NAME
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: dask
+        component: jupyter
+        release: RELEASE-NAME
+    spec:
+      containers:
+      - env:
+        - name: DASK_SCHEDULER_ADDRESS
+          value: RELEASE-NAME-dask-scheduler:8786
+        image: daskdev/dask-notebook:2022.1.0
+        imagePullPolicy: IfNotPresent
+        name: RELEASE-NAME-dask-jupyter
+        ports:
+        - containerPort: 8888
+        resources: {}
+        volumeMounts:
+        - mountPath: /usr/local/etc/jupyter
+          name: config-volume
+      imagePullSecrets: null
+      serviceAccountName: dask-jupyter
+      volumes:
+      - configMap:
+          name: RELEASE-NAME-dask-jupyter-config
+        name: config-volume

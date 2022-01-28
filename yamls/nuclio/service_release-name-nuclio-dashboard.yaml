@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: nuclio
+    nuclio.io/app: dashboard
+    nuclio.io/class: service
+    nuclio.io/name: RELEASE-NAME-nuclio-dashboard
+    release: RELEASE-NAME
+  name: RELEASE-NAME-nuclio-dashboard
+spec:
+  ports:
+  - name: admin
+    port: 8070
+    protocol: TCP
+  selector:
+    nuclio.io/name: RELEASE-NAME-nuclio-dashboard

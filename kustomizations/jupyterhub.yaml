@@ -1,3 +1,0 @@
-helmCharts:
-- name: jupyterhub
-  repo: https://jupyterhub.github.io/helm-chart/

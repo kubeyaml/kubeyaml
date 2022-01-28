@@ -1,0 +1,24 @@
+apiVersion: solr.apache.org/v1beta1
+kind: SolrCloud
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/name: solr
+    app.kubernetes.io/version: 8.9.0
+    helm.sh/chart: solr-0.5.0
+  name: RELEASE-NAME
+spec:
+  dataStorage:
+    ephemeral:
+      emptyDir:
+        sizeLimit: 20Gi
+  solrAddressability:
+    podPort: 8983
+  solrImage:
+    repository: solr
+  updateStrategy:
+    method: Managed
+  zookeeperRef:
+    provided:
+      chroot: /
+      replicas: 3

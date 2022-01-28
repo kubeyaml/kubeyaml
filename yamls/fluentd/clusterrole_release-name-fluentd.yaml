@@ -1,0 +1,28 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: fluentd
+    app.kubernetes.io/version: v1.12.4
+    helm.sh/chart: fluentd-0.3.5
+  name: RELEASE-NAME-fluentd
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - namespaces
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - policy
+  resourceNames:
+  - RELEASE-NAME-fluentd
+  resources:
+  - podsecuritypolicies
+  verbs:
+  - use

@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: RELEASE-NAME-mysql
+    chart: mysql-1.6.4
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-mysql
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: RELEASE-NAME-mysql
+      release: RELEASE-NAME
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: RELEASE-NAME-mysql
+        release: RELEASE-NAME
+    spec:
+      containers:
+      - env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: mysql-root-password
+              name: RELEASE-NAME-mysql
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: mysql-password
+              name: RELEASE-NAME-mysql
+              optional: true
+        - name: MYSQL_USER
+          value: ""
+        - name: MYSQL_DATABASE
+          value: mattermost
+        image: mysql:8.0.18
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - mysqladmin ping -u root -p${MYSQL_ROOT_PASSWORD}
+          failureThreshold: 3
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        name: RELEASE-NAME-mysql
+        ports:
+        - containerPort: 3306
+          name: mysql
+        readinessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - mysqladmin ping -u root -p${MYSQL_ROOT_PASSWORD}
+          failureThreshold: 3
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+        volumeMounts:
+        - mountPath: /var/lib/mysql
+          name: data
+      initContainers:
+      - command:
+        - rm
+        - -fr
+        - /var/lib/mysql/lost+found
+        image: busybox:1.31.1
+        imagePullPolicy: IfNotPresent
+        name: remove-lost-found
+        resources:
+          requests:
+            cpu: 10m
+            memory: 10Mi
+        volumeMounts:
+        - mountPath: /var/lib/mysql
+          name: data
+      serviceAccountName: default
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: RELEASE-NAME-mysql

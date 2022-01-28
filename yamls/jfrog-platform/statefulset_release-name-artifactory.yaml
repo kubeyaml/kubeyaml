@@ -1,0 +1,271 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: artifactory
+    chart: artifactory-107.29.8
+    component: artifactory
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-artifactory
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: artifactory
+      release: RELEASE-NAME
+      role: artifactory
+  serviceName: artifactory
+  template:
+    metadata:
+      annotations:
+        checksum/access-config: 22f6d455fc22b97adb21209563acead92449b67fb674f3c803a757e41ebc5307
+        checksum/admin-creds: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
+        checksum/binarystore: 99b07ac6e3148370ebdc1943f179b9c78e0827abfdbc76025875dde49268054e
+        checksum/database-secrets: 75508f84523314d67de8e4d8b3e6a3b24ed58f8e4d4884b02e8a52f2be979710
+        checksum/systemyaml: 56e5a8f8b7958b93d3cfa1702e5202455af30e25b9d69d5592b3eb70b8efc4b5
+      labels:
+        app: artifactory
+        chart: artifactory-107.29.8
+        component: artifactory
+        heritage: Helm
+        release: RELEASE-NAME
+        role: artifactory
+    spec:
+      containers:
+      - command:
+        - /bin/bash
+        - -c
+        - |
+          set -e; if [ -d /artifactory_extra_conf ] && [ -d /artifactory_bootstrap ]; then
+            echo "Copying bootstrap config from /artifactory_extra_conf to /artifactory_bootstrap";
+            cp -Lrfv /artifactory_extra_conf/ /artifactory_bootstrap/;
+          fi; exec /entrypoint-artifactory.sh
+        env:
+        - name: SKIP_WAIT_FOR_EXTERNAL_DB
+          value: "true"
+        - name: JF_SHARED_DATABASE_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: db-user
+              name: RELEASE-NAME-artifactory-database-creds
+        - name: JF_SHARED_DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: db-password
+              name: RELEASE-NAME-artifactory-database-creds
+        - name: JF_SHARED_DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              key: db-url
+              name: RELEASE-NAME-artifactory-database-creds
+        image: releases-docker.jfrog.io/jfrog/artifactory-pro:7.29.8
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 10
+          httpGet:
+            path: /router/api/v1/system/health
+            port: 8082
+            scheme: HTTP
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        name: artifactory
+        ports:
+        - containerPort: 8082
+          name: http
+        - containerPort: 8081
+          name: http-internal
+        readinessProbe:
+          failureThreshold: 10
+          httpGet:
+            path: /router/api/v1/system/health
+            port: 8082
+            scheme: HTTP
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        resources: {}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - NET_RAW
+          runAsNonRoot: true
+        startupProbe:
+          failureThreshold: 90
+          httpGet:
+            path: /router/api/v1/system/health
+            port: 8082
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 5
+        volumeMounts:
+        - mountPath: /var/opt/jfrog/artifactory
+          name: artifactory-volume
+        - mountPath: /artifactory_bootstrap/binarystore.xml
+          name: binarystore-xml
+          subPath: binarystore.xml
+        - mountPath: /artifactory_bootstrap/info/installer-info.json
+          name: installer-info
+          subPath: installer-info.json
+      initContainers:
+      - command:
+        - /bin/bash
+        - -c
+        - |
+          echo "Running init db scripts"; su postgres -c "bash /scripts/setupPostgres.sh"
+        env:
+        - name: PGUSERNAME
+          value: postgres
+        - name: DB_HOST
+          value: RELEASE-NAME-postgresql
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_SSL_MODE
+          value: disable
+        - name: DB_NAME
+          value: artifactory
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: db-user
+              name: RELEASE-NAME-artifactory-database-creds
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: db-password
+              name: RELEASE-NAME-artifactory-database-creds
+        - name: PGPASSWORD
+          value: postgres
+        - name: CHART_NAME
+          value: artifactory
+        image: releases-docker.jfrog.io/postgres:13.4-alpine
+        imagePullPolicy: Always
+        name: postgres-setup-init
+        securityContext:
+          runAsUser: 0
+        volumeMounts:
+        - mountPath: /scripts
+          name: postgres-setup-init-vol
+      - command:
+        - bash
+        - -c
+        - rm -fv /var/opt/jfrog/artifactory/etc/db.properties
+        image: releases-docker.jfrog.io/jfrog/ubi-minimal:8.5-204
+        imagePullPolicy: IfNotPresent
+        name: delete-db-properties
+        resources:
+          limits:
+            cpu: "1"
+            memory: 1Gi
+          requests:
+            cpu: 10m
+            memory: 50Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - NET_RAW
+          runAsNonRoot: true
+        volumeMounts:
+        - mountPath: /var/opt/jfrog/artifactory
+          name: artifactory-volume
+      - command:
+        - bash
+        - -c
+        - rm -rfv /var/opt/jfrog/artifactory/lost+found /var/opt/jfrog/artifactory/data/.lock
+        image: releases-docker.jfrog.io/jfrog/ubi-minimal:8.5-204
+        imagePullPolicy: IfNotPresent
+        name: remove-lost-found
+        resources:
+          limits:
+            cpu: "1"
+            memory: 1Gi
+          requests:
+            cpu: 10m
+            memory: 50Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - NET_RAW
+          runAsNonRoot: true
+        volumeMounts:
+        - mountPath: /var/opt/jfrog/artifactory
+          name: artifactory-volume
+      - command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Copy system.yaml to /var/opt/jfrog/artifactory/etc"; mkdir -p /var/opt/jfrog/artifactory/etc; mkdir -p /var/opt/jfrog/artifactory/etc/access/keys/trusted; cp -fv /tmp/etc/system.yaml /var/opt/jfrog/artifactory/etc/system.yaml; echo "Remove /var/opt/jfrog/artifactory/lost+found folder if exists"; rm -rfv /var/opt/jfrog/artifactory/lost+found; echo "Copy access.config.patch.yml to /var/opt/jfrog/artifactory/etc/access"; mkdir -p /var/opt/jfrog/artifactory/etc/access; cp -fv /tmp/etc/access.config.patch.yml /var/opt/jfrog/artifactory/etc/access/access.config.patch.yml; echo "Copy joinKey to /var/opt/jfrog/artifactory/bootstrap/access/etc/security"; mkdir -p /var/opt/jfrog/artifactory/bootstrap/access/etc/security; echo -n ${ARTIFACTORY_JOIN_KEY} > /var/opt/jfrog/artifactory/bootstrap/access/etc/security/join.key; echo "Copy masterKey to /var/opt/jfrog/artifactory/etc/security"; mkdir -p /var/opt/jfrog/artifactory/etc/security; echo -n ${ARTIFACTORY_MASTER_KEY} > /var/opt/jfrog/artifactory/etc/security/master.key;
+        env:
+        - name: ARTIFACTORY_JOIN_KEY
+          valueFrom:
+            secretKeyRef:
+              key: join-key
+              name: RELEASE-NAME-artifactory
+        - name: ARTIFACTORY_MASTER_KEY
+          valueFrom:
+            secretKeyRef:
+              key: master-key
+              name: RELEASE-NAME-artifactory
+        image: releases-docker.jfrog.io/jfrog/ubi-minimal:8.5-204
+        name: copy-system-yaml
+        resources:
+          limits:
+            cpu: "1"
+            memory: 1Gi
+          requests:
+            cpu: 10m
+            memory: 50Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - NET_RAW
+          runAsNonRoot: true
+        volumeMounts:
+        - mountPath: /var/opt/jfrog/artifactory
+          name: artifactory-volume
+        - mountPath: /tmp/etc/system.yaml
+          name: systemyaml
+          subPath: system.yaml
+        - mountPath: /tmp/etc/access.config.patch.yml
+          name: access-config
+          subPath: access.config.patch.yml
+      securityContext:
+        fsGroup: 1030
+        runAsUser: 1030
+      serviceAccountName: default
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: binarystore-xml
+        secret:
+          secretName: RELEASE-NAME-artifactory-binarystore
+      - configMap:
+          name: RELEASE-NAME-artifactory-installer-info
+        name: installer-info
+      - name: systemyaml
+        secret:
+          secretName: RELEASE-NAME-artifactory-systemyaml
+      - name: access-config
+        secret:
+          secretName: RELEASE-NAME-artifactory-access-config
+      - configMap:
+          name: RELEASE-NAME-setup-script
+        name: postgres-setup-init-vol
+  updateStrategy:
+    type: RollingUpdate
+  volumeClaimTemplates:
+  - metadata:
+      name: artifactory-volume
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 200Gi

@@ -1,0 +1,112 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: harbor
+    chart: harbor
+    component: core
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-harbor-core
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: harbor
+      component: core
+      release: RELEASE-NAME
+  template:
+    metadata:
+      annotations:
+        checksum/configmap: 7a4bb5ad875ff20792b2028ef4a96ebca3a9c5b3a58b31d78eb1389d3ad81367
+        checksum/secret: 726e8a3dca9171aef18553503f598635ab54b2276cb73a5183fae1f31775b45e
+        checksum/secret-jobservice: 54008c21a8527008184e120b737125ba49532beb153c22b296b73073c73260bf
+      labels:
+        app: harbor
+        component: core
+        release: RELEASE-NAME
+    spec:
+      automountServiceAccountToken: false
+      containers:
+      - env:
+        - name: CORE_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: secret
+              name: RELEASE-NAME-harbor-core
+        - name: JOBSERVICE_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: JOBSERVICE_SECRET
+              name: RELEASE-NAME-harbor-jobservice
+        envFrom:
+        - configMapRef:
+            name: RELEASE-NAME-harbor-core
+        - secretRef:
+            name: RELEASE-NAME-harbor-core
+        image: goharbor/harbor-core:v2.4.1
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 2
+          httpGet:
+            path: /api/v2.0/ping
+            port: 8080
+            scheme: HTTP
+          periodSeconds: 10
+        name: core
+        ports:
+        - containerPort: 8080
+        readinessProbe:
+          failureThreshold: 2
+          httpGet:
+            path: /api/v2.0/ping
+            port: 8080
+            scheme: HTTP
+          periodSeconds: 10
+        startupProbe:
+          failureThreshold: 360
+          httpGet:
+            path: /api/v2.0/ping
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        volumeMounts:
+        - mountPath: /etc/core/app.conf
+          name: config
+          subPath: app.conf
+        - mountPath: /etc/core/key
+          name: secret-key
+          subPath: key
+        - mountPath: /etc/core/private_key.pem
+          name: token-service-private-key
+          subPath: tls.key
+        - mountPath: /etc/core/ca
+          name: ca-download
+        - mountPath: /etc/core/token
+          name: psc
+      securityContext:
+        fsGroup: 10000
+        runAsUser: 10000
+      terminationGracePeriodSeconds: 120
+      volumes:
+      - configMap:
+          items:
+          - key: app.conf
+            path: app.conf
+          name: RELEASE-NAME-harbor-core
+        name: config
+      - name: secret-key
+        secret:
+          items:
+          - key: secretKey
+            path: key
+          secretName: RELEASE-NAME-harbor-core
+      - name: token-service-private-key
+        secret:
+          secretName: RELEASE-NAME-harbor-core
+      - name: ca-download
+        secret:
+          secretName: RELEASE-NAME-harbor-ingress
+      - emptyDir: {}
+        name: psc

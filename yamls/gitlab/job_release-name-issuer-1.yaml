@@ -1,0 +1,40 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  labels:
+    app: certmanager-issuer
+    chart: certmanager-issuer-0.1.0
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-issuer-1
+  namespace: default
+spec:
+  activeDeadlineSeconds: 300
+  template:
+    metadata:
+      labels:
+        app: certmanager-issuer
+        release: RELEASE-NAME
+    spec:
+      containers:
+      - command:
+        - /bin/bash
+        - /scripts/create-issuer
+        - /scripts/issuer.yml
+        image: registry.gitlab.com/gitlab-org/build/cng/kubectl:1.16.15
+        name: create-issuer
+        resources:
+          requests:
+            cpu: 50m
+        volumeMounts:
+        - mountPath: /scripts
+          name: scripts
+      restartPolicy: OnFailure
+      securityContext:
+        fsGroup: 65534
+        runAsUser: 65534
+      serviceAccountName: RELEASE-NAME-certmanager-issuer
+      volumes:
+      - configMap:
+          name: RELEASE-NAME-certmanager-issuer-certmanager
+        name: scripts

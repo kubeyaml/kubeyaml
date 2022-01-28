@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: parsoid
+    chart: parsoid-0.1.1
+    heritage: Helm
+    release: RELEASE-NAME
+  name: parsoid-RELEASE-NAME
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: parsoid
+      release: RELEASE-NAME
+  template:
+    metadata:
+      annotations:
+        checksum/config: bc537bc328f83ab2fc312ccef57ec723bab77d9958077d87afb3a411d487e01a
+        checksum/secrets: a5729f9e7d646f964148051ed3c9cc84769f0ff998e5d6b2f5d442e05ef2f252
+        prometheus.io/port: "9102"
+        prometheus.io/scrape: "true"
+      labels:
+        app: parsoid
+        release: RELEASE-NAME
+        routed_via: RELEASE-NAME
+    spec:
+      containers:
+      - args:
+        - --debug=0.0.0.0:5858
+        - bin/server.js
+        - -n 0
+        - --config
+        - /usr/src/config/config.yaml
+        command:
+        - node
+        env:
+        - name: SERVICE_IDENTIFIER
+          value: parsoid-RELEASE-NAME
+        - name: INTERFACE
+          value: 0.0.0.0
+        - name: NODE_ENV
+          value: development
+        - name: PORT
+          value: "8142"
+        image: docker-registry.wikimedia.org/wikimedia/mediawiki-services-parsoid:dev
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          tcpSocket:
+            port: 8142
+        name: parsoid-RELEASE-NAME
+        ports:
+        - containerPort: 8142
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8142
+        resources:
+          limits:
+            cpu: 1
+            memory: 300Mi
+          requests:
+            cpu: 50m
+            memory: 100Mi
+        volumeMounts:
+        - mountPath: /usr/src/config
+          name: config-volume
+      volumes:
+      - configMap:
+          name: parsoid-RELEASE-NAME-config
+        name: config-volume

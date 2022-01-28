@@ -1,0 +1,19 @@
+apiVersion: v1
+data:
+  enable_extensions.sh: |
+    [[ -n "${POSTGRES_POSTGRES_PASSWORD_FILE:-}" ]] && POSTGRES_POSTGRES_PASSWORD=$(cat ${POSTGRES_POSTGRES_PASSWORD_FILE})
+    PGPASSWORD=${POSTGRES_POSTGRES_PASSWORD} psql -d gitlabhq_production -U postgres -c 'CREATE EXTENSION IF NOT EXISTS pg_trgm; CREATE EXTENSION IF NOT EXISTS btree_gist;'
+  init_revision.sh: |
+    if [[ ! -f "$POSTGRESQL_VOLUME_DIR/.gitlab_1_scripts_initialized" ]] ; then
+      rm -f "$POSTGRESQL_VOLUME_DIR/.user_scripts_initialized"
+      touch "$POSTGRESQL_VOLUME_DIR/.gitlab_1_scripts_initialized"
+    fi
+kind: ConfigMap
+metadata:
+  labels:
+    app: gitlab
+    chart: gitlab-5.7.0
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-postgresql-init-db
+  namespace: default

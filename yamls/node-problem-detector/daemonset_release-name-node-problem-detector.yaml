@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: node-problem-detector
+    helm.sh/chart: node-problem-detector-2.0.9
+  name: RELEASE-NAME-node-problem-detector
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: node-problem-detector
+      app.kubernetes.io/instance: RELEASE-NAME
+      app.kubernetes.io/name: node-problem-detector
+  template:
+    metadata:
+      annotations:
+        checksum/config: 37c94a06073808289c3ea2b5132ad1974e511844a91afc8ebf8a3d62b1257c0c
+        scheduler.alpha.kubernetes.io/critical-pod: ""
+      labels:
+        app: node-problem-detector
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/name: node-problem-detector
+    spec:
+      containers:
+      - command:
+        - /bin/sh
+        - -c
+        - exec /node-problem-detector --logtostderr --config.system-log-monitor=/config/kernel-monitor.json,/config/docker-monitor.json  --prometheus-address=0.0.0.0
+          --prometheus-port=20257 --k8s-exporter-heartbeat-period=5m0s
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        image: k8s.gcr.io/node-problem-detector/node-problem-detector:v0.8.10
+        imagePullPolicy: IfNotPresent
+        name: node-problem-detector
+        ports:
+        - containerPort: 20257
+          name: exporter
+        resources: {}
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - mountPath: /var/log/
+          name: log
+          readOnly: true
+        - mountPath: /etc/localtime
+          name: localtime
+          readOnly: true
+        - mountPath: /custom-config
+          name: custom-config
+          readOnly: true
+      hostNetwork: false
+      hostPID: false
+      serviceAccountName: RELEASE-NAME-node-problem-detector
+      terminationGracePeriodSeconds: 30
+      tolerations:
+      - effect: NoSchedule
+        operator: Exists
+      volumes:
+      - hostPath:
+          path: /var/log/
+        name: log
+      - hostPath:
+          path: /etc/localtime
+          type: FileOrCreate
+        name: localtime
+      - configMap:
+          name: RELEASE-NAME-node-problem-detector-custom-config
+        name: custom-config
+  updateStrategy:
+    rollingUpdate:
+      maxUnavailable: 1
+    type: RollingUpdate

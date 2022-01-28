@@ -1,0 +1,55 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    helm.sh/hook: post-install,post-upgrade,post-rollback
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: velero
+    helm.sh/chart: velero-2.27.3
+  name: RELEASE-NAME-velero-upgrade-crds
+  namespace: default
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      name: velero-upgrade-crds
+    spec:
+      containers:
+      - args:
+        - -c
+        - /velero install --crds-only --dry-run -o yaml | /tmp/kubectl apply -f -
+        command:
+        - /tmp/sh
+        image: velero/velero:v1.7.1
+        imagePullPolicy: IfNotPresent
+        name: velero
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 512Mi
+          requests:
+            cpu: 500m
+            memory: 128Mi
+        volumeMounts:
+        - mountPath: /tmp
+          name: crds
+      initContainers:
+      - args:
+        - -c
+        - cp `which sh` /tmp && cp `which kubectl` /tmp
+        command:
+        - /bin/sh
+        image: docker.io/bitnami/kubectl:1.20
+        imagePullPolicy: IfNotPresent
+        name: kubectl
+        volumeMounts:
+        - mountPath: /tmp
+          name: crds
+      restartPolicy: OnFailure
+      serviceAccountName: RELEASE-NAME-velero-server
+      volumes:
+      - emptyDir: {}
+        name: crds

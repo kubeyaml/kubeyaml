@@ -1,0 +1,14 @@
+apiVersion: v1
+data:
+  override.conf: |
+    listen_addresses = '*'
+    max_connections = '1500'
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: postgresql
+    helm.sh/chart: postgresql-10.3.18
+  name: RELEASE-NAME-postgresql-extended-configuration
+  namespace: default

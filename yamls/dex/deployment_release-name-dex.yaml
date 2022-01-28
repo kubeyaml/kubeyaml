@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: dex
+    app.kubernetes.io/version: 2.30.0
+    helm.sh/chart: dex-0.6.5
+  name: RELEASE-NAME-dex
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: RELEASE-NAME
+      app.kubernetes.io/name: dex
+  template:
+    metadata:
+      annotations:
+        checksum/config: ee4ae16ac24455436100aba6ed705a32a213dc28854ac298ad65fd4ae92b55c5
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/name: dex
+    spec:
+      containers:
+      - args:
+        - dex
+        - serve
+        - --web-http-addr
+        - 0.0.0.0:5556
+        - --telemetry-addr
+        - 0.0.0.0:5558
+        - /etc/dex/config.yaml
+        env: null
+        image: ghcr.io/dexidp/dex:v2.30.0
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /healthz/live
+            port: telemetry
+        name: dex
+        ports:
+        - containerPort: 5556
+          name: http
+          protocol: TCP
+        - containerPort: 5558
+          name: telemetry
+          protocol: TCP
+        readinessProbe:
+          httpGet:
+            path: /healthz/ready
+            port: telemetry
+        resources: {}
+        securityContext: {}
+        volumeMounts:
+        - mountPath: /etc/dex
+          name: config
+          readOnly: true
+      securityContext: {}
+      serviceAccountName: RELEASE-NAME-dex
+      volumes:
+      - name: config
+        secret:
+          secretName: RELEASE-NAME-dex

@@ -1,0 +1,142 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/component: phpbb
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: phpbb
+    helm.sh/chart: phpbb-11.0.3
+  name: RELEASE-NAME-phpbb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: RELEASE-NAME
+      app.kubernetes.io/name: phpbb
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        prometheus.io/port: "9117"
+        prometheus.io/scrape: "true"
+      labels:
+        app.kubernetes.io/component: phpbb
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: phpbb
+        helm.sh/chart: phpbb-11.0.3
+    spec:
+      affinity:
+        nodeAffinity: null
+        podAffinity: null
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: RELEASE-NAME
+                  app.kubernetes.io/name: phpbb
+              namespaces:
+              - default
+              topologyKey: kubernetes.io/hostname
+            weight: 1
+      containers:
+      - env:
+        - name: BITNAMI_DEBUG
+          value: "false"
+        - name: ALLOW_EMPTY_PASSWORD
+          value: "no"
+        - name: APACHE_HTTP_PORT_NUMBER
+          value: "8080"
+        - name: APACHE_HTTPS_PORT_NUMBER
+          value: "8443"
+        - name: PHPBB_DATABASE_HOST
+          value: RELEASE-NAME-mariadb
+        - name: PHPBB_DATABASE_PORT_NUMBER
+          value: "3306"
+        - name: PHPBB_DATABASE_NAME
+          value: bitnami_phpbb
+        - name: PHPBB_DATABASE_USER
+          value: bn_phpbb
+        - name: PHPBB_DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: mariadb-password
+              name: RELEASE-NAME-mariadb
+        - name: PHPBB_SKIP_BOOTSTRAP
+          value: "no"
+        - name: PHPBB_USERNAME
+          value: user
+        - name: PHPBB_DISABLE_SESSION_VALIDATION
+          value: "yes"
+        - name: PHPBB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: phpbb-password
+              name: RELEASE-NAME-phpbb
+        - name: PHPBB_EMAIL
+          value: user@example.com
+        - name: SMTP_HOST
+          value: ""
+        - name: SMTP_PORT
+          value: ""
+        - name: SMTP_USER
+          value: ""
+        - name: SMTP_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: smtp-password
+              name: RELEASE-NAME-phpbb
+        - name: SMTP_PROTOCOL
+          value: ""
+        envFrom: null
+        image: docker.io/bitnami/phpbb:3.3.5-debian-10-r92
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 6
+          httpGet:
+            path: /app.php/help/faq
+            port: http
+          initialDelaySeconds: 600
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        name: phpbb
+        ports:
+        - containerPort: 8080
+          name: http
+        - containerPort: 8443
+          name: https
+        readinessProbe:
+          failureThreshold: 6
+          httpGet:
+            path: /app.php/help/faq
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          successThreshold: 1
+          timeoutSeconds: 3
+        resources:
+          limits: {}
+          requests:
+            cpu: 300m
+            memory: 512Mi
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+        volumeMounts:
+        - mountPath: /bitnami
+          name: phpbb-data
+      hostAliases:
+      - hostnames:
+        - status.localhost
+        ip: 127.0.0.1
+      initContainers: null
+      securityContext:
+        fsGroup: 1001
+      volumes:
+      - name: phpbb-data
+        persistentVolumeClaim:
+          claimName: RELEASE-NAME-phpbb

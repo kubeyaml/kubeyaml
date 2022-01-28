@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: consul
+    chart: consul-helm
+    component: dns
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-consul-dns
+  namespace: default
+spec:
+  ports:
+  - name: dns-tcp
+    port: 53
+    protocol: TCP
+    targetPort: dns-tcp
+  - name: dns-udp
+    port: 53
+    protocol: UDP
+    targetPort: dns-udp
+  selector:
+    app: consul
+    hasDNS: "true"
+    release: RELEASE-NAME
+  type: ClusterIP

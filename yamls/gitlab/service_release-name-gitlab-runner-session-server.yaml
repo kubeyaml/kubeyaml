@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: RELEASE-NAME-gitlab-runner
+    chart: gitlab-runner-0.37.0
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-gitlab-runner-session-server
+  namespace: default
+spec:
+  ports:
+  - port: 9000
+    protocol: TCP
+    targetPort: 8093
+  selector:
+    app: RELEASE-NAME-gitlab-runner
+    release: RELEASE-NAME
+  type: LoadBalancer

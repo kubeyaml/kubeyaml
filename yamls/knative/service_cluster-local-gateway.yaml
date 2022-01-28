@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations: null
+  labels:
+    app: cluster-local-gateway
+    chart: gateways
+    heritage: Tiller
+    istio: cluster-local-gateway
+    release: release-name
+  name: cluster-local-gateway
+  namespace: istio-system
+spec:
+  ports:
+  - name: status-port
+    port: 15020
+  - name: http2
+    port: 80
+  - name: https
+    port: 443
+  selector:
+    app: cluster-local-gateway
+    istio: cluster-local-gateway
+    release: release-name
+  type: ClusterIP

@@ -1,0 +1,15 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app: nuclio
+    release: RELEASE-NAME
+  name: RELEASE-NAME-nuclio-function-deployer-clusterrolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: RELEASE-NAME-nuclio-function-deployer-clusterrole
+subjects:
+- kind: ServiceAccount
+  name: RELEASE-NAME-nuclio
+  namespace: default

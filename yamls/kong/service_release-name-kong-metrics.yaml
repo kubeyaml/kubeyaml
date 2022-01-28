@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    prometheus.io/path: /metrics
+    prometheus.io/port: "9119"
+    prometheus.io/scrape: "true"
+  labels:
+    app.kubernetes.io/component: server
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: kong
+    helm.sh/chart: kong-5.0.4
+  name: RELEASE-NAME-kong-metrics
+  namespace: default
+spec:
+  ports:
+  - name: http-metrics
+    nodePort: null
+    port: 9119
+    protocol: TCP
+    targetPort: http-metrics
+  selector:
+    app.kubernetes.io/component: server
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/name: kong
+  type: ClusterIP

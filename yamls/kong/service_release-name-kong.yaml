@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/component: server
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: kong
+    helm.sh/chart: kong-5.0.4
+  name: RELEASE-NAME-kong
+  namespace: default
+spec:
+  ports:
+  - name: http-proxy
+    nodePort: null
+    port: 80
+    protocol: TCP
+    targetPort: http-proxy
+  - name: https-proxy
+    nodePort: null
+    port: 443
+    protocol: TCP
+    targetPort: https-proxy
+  selector:
+    app.kubernetes.io/component: server
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/name: kong
+  type: ClusterIP

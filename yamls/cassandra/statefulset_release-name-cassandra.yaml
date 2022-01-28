@@ -1,0 +1,158 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: cassandra
+    helm.sh/chart: cassandra-9.1.5
+  name: RELEASE-NAME-cassandra
+  namespace: default
+spec:
+  podManagementPolicy: OrderedReady
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: RELEASE-NAME
+      app.kubernetes.io/name: cassandra
+  serviceName: RELEASE-NAME-cassandra-headless
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: cassandra
+        helm.sh/chart: cassandra-9.1.5
+    spec:
+      affinity:
+        nodeAffinity: null
+        podAffinity: null
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: RELEASE-NAME
+                  app.kubernetes.io/name: cassandra
+              namespaces:
+              - default
+              topologyKey: kubernetes.io/hostname
+            weight: 1
+      containers:
+      - command:
+        - bash
+        - -ec
+        - |
+          # Node 0 is the password seeder
+          if [[ $POD_NAME =~ (.*)-0$ ]]; then
+              echo "Setting node as password seeder"
+              export CASSANDRA_PASSWORD_SEEDER=yes
+          else
+              # Only node 0 will execute the startup initdb scripts
+              export CASSANDRA_IGNORE_INITDB_SCRIPTS=1
+          fi
+          /opt/bitnami/scripts/cassandra/entrypoint.sh /opt/bitnami/scripts/cassandra/run.sh
+        env:
+        - name: BITNAMI_DEBUG
+          value: "false"
+        - name: CASSANDRA_CLUSTER_NAME
+          value: cassandra
+        - name: CASSANDRA_SEEDS
+          value: RELEASE-NAME-cassandra-0.RELEASE-NAME-cassandra-headless.default.svc.cluster.local
+        - name: CASSANDRA_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: cassandra-password
+              name: RELEASE-NAME-cassandra
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: CASSANDRA_USER
+          value: cassandra
+        - name: CASSANDRA_NUM_TOKENS
+          value: "256"
+        - name: CASSANDRA_DATACENTER
+          value: dc1
+        - name: CASSANDRA_ENDPOINT_SNITCH
+          value: SimpleSnitch
+        - name: CASSANDRA_KEYSTORE_LOCATION
+          value: /opt/bitnami/cassandra/certs/keystore
+        - name: CASSANDRA_TRUSTSTORE_LOCATION
+          value: /opt/bitnami/cassandra/certs/truststore
+        - name: CASSANDRA_RACK
+          value: rack1
+        - name: CASSANDRA_TRANSPORT_PORT_NUMBER
+          value: "7000"
+        - name: CASSANDRA_JMX_PORT_NUMBER
+          value: "7199"
+        - name: CASSANDRA_CQL_PORT_NUMBER
+          value: "9042"
+        envFrom: null
+        image: docker.io/bitnami/cassandra:4.0.1-debian-10-r129
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          exec:
+            command:
+            - /bin/bash
+            - -ec
+            - |
+              nodetool status
+          failureThreshold: 5
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          successThreshold: 1
+          timeoutSeconds: 5
+        name: cassandra
+        ports:
+        - containerPort: 7000
+          name: intra
+        - containerPort: 7001
+          name: tls
+        - containerPort: 7199
+          name: jmx
+        - containerPort: 9042
+          name: cql
+        readinessProbe:
+          exec:
+            command:
+            - /bin/bash
+            - -ec
+            - |
+              nodetool status | grep -E "^UN\\s+${POD_IP}"
+          failureThreshold: 5
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        resources:
+          limits: {}
+          requests: {}
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+        volumeMounts:
+        - mountPath: /bitnami/cassandra
+          name: data
+      securityContext:
+        fsGroup: 1001
+      serviceAccountName: RELEASE-NAME-cassandra
+      volumes: null
+  updateStrategy:
+    type: RollingUpdate
+  volumeClaimTemplates:
+  - metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/name: cassandra
+      name: data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 8Gi

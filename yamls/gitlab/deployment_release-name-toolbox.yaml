@@ -1,0 +1,194 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations: null
+  labels:
+    app: toolbox
+    chart: toolbox-5.7.0
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-toolbox
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: toolbox
+      release: RELEASE-NAME
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        checksum/config: b66f64013755c17e6fc5db3f79b50e763265b7ef292da758b1d2e083211a5759
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
+      labels:
+        app: toolbox
+        chart: toolbox-5.7.0
+        heritage: Helm
+        release: RELEASE-NAME
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: gitaly
+                  release: RELEASE-NAME
+              topologyKey: kubernetes.io/hostname
+            weight: 1
+      automountServiceAccountToken: false
+      containers:
+      - args:
+        - /bin/bash
+        - -c
+        - cp -v -r -L /etc/gitlab/.s3cfg $HOME/.s3cfg && while sleep 3600; do :; done
+        env:
+        - name: ARTIFACTS_BUCKET_NAME
+          value: gitlab-artifacts
+        - name: REGISTRY_BUCKET_NAME
+          value: registry
+        - name: LFS_BUCKET_NAME
+          value: git-lfs
+        - name: UPLOADS_BUCKET_NAME
+          value: gitlab-uploads
+        - name: PACKAGES_BUCKET_NAME
+          value: gitlab-packages
+        - name: EXTERNAL_DIFFS_BUCKET_NAME
+          value: gitlab-mr-diffs
+        - name: TERRAFORM_STATE_BUCKET_NAME
+          value: gitlab-terraform-state
+        - name: BACKUP_BUCKET_NAME
+          value: gitlab-backups
+        - name: BACKUP_BACKEND
+          value: s3
+        - name: TMP_BUCKET_NAME
+          value: tmp
+        - name: PAGES_BUCKET_NAME
+          value: gitlab-pages
+        - name: GITALY_FEATURE_DEFAULT_ON
+          value: "1"
+        - name: ENABLE_BOOTSNAP
+          value: "1"
+        - name: CONFIG_TEMPLATE_DIRECTORY
+          value: /var/opt/gitlab/templates
+        - name: CONFIG_DIRECTORY
+          value: /srv/gitlab/config
+        image: registry.gitlab.com/gitlab-org/build/cng/gitlab-toolbox-ee:v14.7.0
+        name: toolbox
+        resources:
+          requests:
+            cpu: 50m
+            memory: 350M
+        volumeMounts:
+        - mountPath: /var/opt/gitlab/templates
+          name: toolbox-config
+        - mountPath: /srv/gitlab/config/initializers/smtp_settings.rb
+          name: toolbox-config
+          subPath: smtp_settings.rb
+        - mountPath: /etc/gitlab
+          name: toolbox-secrets
+          readOnly: true
+        - mountPath: /srv/gitlab/config/secrets.yml
+          name: toolbox-secrets
+          subPath: rails-secrets/secrets.yml
+        - mountPath: /srv/gitlab/tmp
+          name: toolbox-tmp
+          readOnly: false
+        - mountPath: /etc/ssl/certs/
+          name: etc-ssl-certs
+          readOnly: true
+      initContainers:
+      - env: null
+        image: registry.gitlab.com/gitlab-org/build/cng/alpine-certificates:20191127-r2
+        name: certificates
+        resources:
+          requests:
+            cpu: 50m
+        volumeMounts:
+        - mountPath: /etc/ssl/certs
+          name: etc-ssl-certs
+          readOnly: false
+      - command:
+        - sh
+        - /config/configure
+        env: null
+        image: registry.gitlab.com/gitlab-org/cloud-native/mirror/images/busybox:latest
+        name: configure
+        resources:
+          requests:
+            cpu: 50m
+        volumeMounts:
+        - mountPath: /config
+          name: toolbox-config
+          readOnly: true
+        - mountPath: /init-config
+          name: init-toolbox-secrets
+          readOnly: true
+        - mountPath: /init-secrets
+          name: toolbox-secrets
+          readOnly: false
+      securityContext:
+        fsGroup: 1000
+        runAsUser: 1000
+      volumes:
+      - name: toolbox-config
+        projected:
+          sources:
+          - configMap:
+              name: RELEASE-NAME-toolbox
+      - emptyDir: {}
+        name: toolbox-tmp
+      - name: init-toolbox-secrets
+        projected:
+          defaultMode: 256
+          sources:
+          - secret:
+              items:
+              - key: secrets.yml
+                path: rails-secrets/secrets.yml
+              name: RELEASE-NAME-rails-secret
+          - secret:
+              items:
+              - key: secret
+                path: shell/.gitlab_shell_secret
+              name: RELEASE-NAME-gitlab-shell-secret
+          - secret:
+              items:
+              - key: token
+                path: gitaly/gitaly_token
+              name: RELEASE-NAME-gitaly-secret
+          - secret:
+              items:
+              - key: secret
+                path: redis/redis-password
+              name: RELEASE-NAME-redis-secret
+          - secret:
+              items:
+              - key: postgresql-password
+                path: postgres/psql-password-main
+              name: RELEASE-NAME-postgresql-password
+          - secret:
+              items:
+              - key: registry-auth.key
+                path: registry/gitlab-registry.key
+              name: RELEASE-NAME-registry-secret
+          - secret:
+              items:
+              - key: secret
+                path: registry/notificationSecret
+              name: RELEASE-NAME-registry-notification
+          - secret:
+              items:
+              - key: accesskey
+                path: minio/accesskey
+              - key: secretkey
+                path: minio/secretkey
+              name: RELEASE-NAME-minio-secret
+      - emptyDir:
+          medium: Memory
+        name: toolbox-secrets
+      - emptyDir:
+          medium: Memory
+        name: etc-ssl-certs

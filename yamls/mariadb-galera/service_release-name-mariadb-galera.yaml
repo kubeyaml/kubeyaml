@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: mariadb-galera
+    helm.sh/chart: mariadb-galera-6.2.2
+  name: RELEASE-NAME-mariadb-galera
+spec:
+  ports:
+  - name: mysql
+    nodePort: null
+    port: 3306
+    targetPort: mysql
+  selector:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/name: mariadb-galera
+  type: ClusterIP

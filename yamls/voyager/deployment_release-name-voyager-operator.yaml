@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: voyager
+    app.kubernetes.io/version: v14.1.0
+    helm.sh/chart: voyager-v2022.01.10
+  name: RELEASE-NAME-voyager-operator
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: RELEASE-NAME
+      app.kubernetes.io/name: voyager
+      voyager.appscode.com/component: operator
+  template:
+    metadata:
+      annotations:
+        checksum/apiregistration.yaml: d62d07b81e1abe20535254aa40adbf88822f617ed2bb9af9e92ff6f86a8d4e82
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/name: voyager
+        voyager.appscode.com/component: operator
+    spec:
+      containers:
+      - args:
+        - operator
+        - --cloud-provider=
+        - --cloud-config=
+        - --v=3
+        - --ingress-class=
+        - --haproxy-image=appscode/haproxy:2.5-alpine
+        - --coordinator-image=appscode/voyager:v14.1.0
+        - --bypass-validating-webhook-xray=false
+        - --use-kubeapiserver-fqdn-for-aks=true
+        env:
+        - name: MY_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: MY_POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        image: appscode/voyager:v14.1.0
+        imagePullPolicy: IfNotPresent
+        name: operator
+        ports:
+        - containerPort: 8443
+        - containerPort: 56791
+        resources: {}
+        securityContext: {}
+        volumeMounts:
+        - mountPath: /var/serving-cert
+          name: serving-cert
+        - mountPath: /tmp
+          name: tmp-dir
+      nodeSelector:
+        beta.kubernetes.io/os: linux
+      securityContext:
+        fsGroup: 65535
+      serviceAccountName: RELEASE-NAME-voyager
+      volumes:
+      - name: serving-cert
+        secret:
+          defaultMode: 420
+          secretName: RELEASE-NAME-voyager-apiserver-cert
+      - emptyDir: {}
+        name: tmp-dir

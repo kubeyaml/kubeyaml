@@ -1,0 +1,33 @@
+apiVersion: v1
+data:
+  create-issuer: |
+    #!/bin/bash
+    set -e ;
+
+    issuer_file=$1
+    namespace=default
+
+    echo "Creating the certmanager issuer..."
+    set +e ; # The CRD may not exist yet. We need to retry until this passes
+    while ! kubectl --namespace=$namespace apply -f ${issuer_file:=issuer.yml}; do
+      sleep 1;
+    done ;
+    set -e ; # reset `e` as active
+  issuer.yml: "\napiVersion: cert-manager.io/v1\nkind: Issuer\nmetadata:\n  name:
+    RELEASE-NAME-issuer\n  namespace: default\n  labels:\n    app: certmanager-issuer\n
+    \   chart: certmanager-issuer-0.1.0\n    release: RELEASE-NAME\n    heritage:
+    Helm\n    \nspec:\n  acme:\n    # The ACME server URL\n    server: \"https://acme-v02.api.letsencrypt.org/directory\"\n
+    \   # Email address used for ACME registration\n    email: \"me@example.com\"\n
+    \   # Name of a secret used to store the ACME account private key\n    privateKeySecretRef:\n
+    \     name: RELEASE-NAME-acme-key\n    # Enable the HTTP-01 challenge provider\n
+    \   solvers:\n    - selector: {}\n      http01:\n        ingress:\n          class:
+    RELEASE-NAME-nginx\n"
+kind: ConfigMap
+metadata:
+  labels:
+    app: certmanager-issuer
+    chart: certmanager-issuer-0.1.0
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-certmanager-issuer-certmanager
+  namespace: default

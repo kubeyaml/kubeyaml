@@ -1,0 +1,48 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  labels:
+    app: minio
+    chart: minio-0.4.3
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-minio-create-buckets-1
+  namespace: default
+spec:
+  activeDeadlineSeconds: 600
+  template:
+    metadata:
+      labels:
+        app: minio
+        chart: minio-0.4.3
+        component: create-buckets
+        heritage: Helm
+        release: RELEASE-NAME
+    spec:
+      automountServiceAccountToken: false
+      containers:
+      - command:
+        - /bin/sh
+        - /config/initialize
+        env:
+        - name: MINIO_ENDPOINT
+          value: RELEASE-NAME-minio-svc.default.svc
+        - name: MINIO_PORT
+          value: "9000"
+        image: minio/mc:RELEASE.2018-07-13T00-53-22Z
+        name: minio-mc
+        resources:
+          requests:
+            cpu: 50m
+        volumeMounts:
+        - mountPath: /config
+          name: minio-configuration
+      restartPolicy: OnFailure
+      volumes:
+      - name: minio-configuration
+        projected:
+          sources:
+          - configMap:
+              name: RELEASE-NAME-minio-config-cm
+          - secret:
+              name: RELEASE-NAME-minio-secret

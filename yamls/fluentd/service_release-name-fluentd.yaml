@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: fluentd
+    app.kubernetes.io/version: v1.12.4
+    helm.sh/chart: fluentd-0.3.5
+  name: RELEASE-NAME-fluentd
+spec:
+  ports:
+  - name: metrics
+    port: 24231
+    protocol: TCP
+    targetPort: metrics
+  selector:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/name: fluentd
+  type: ClusterIP

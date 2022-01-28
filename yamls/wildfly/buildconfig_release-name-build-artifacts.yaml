@@ -1,0 +1,36 @@
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: wildfly
+    app.kubernetes.io/version: "26.0"
+    helm.sh/chart: wildfly-1.5.4
+  name: RELEASE-NAME-build-artifacts
+spec:
+  output:
+    to:
+      kind: ImageStreamTag
+      name: RELEASE-NAME-build-artifacts:latest
+  runPolicy: Serial
+  source:
+    git:
+      ref: null
+      uri: https://github.com/wildfly/quickstart.git
+    type: Git
+  strategy:
+    sourceStrategy:
+      env:
+      - name: GALLEON_PROVISION_DEFAULT_FAT_SERVER
+        value: "true"
+      - name: CUSTOM_INSTALL_DIRECTORIES
+        value: extensions
+      forcePull: true
+      from:
+        kind: DockerImage
+        name: quay.io/wildfly/wildfly-centos7:26.0
+      incremental: true
+    type: Source
+  triggers:
+  - type: ConfigChange

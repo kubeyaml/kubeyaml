@@ -1,0 +1,159 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  annotations: null
+  labels:
+    app: postgresql
+    chart: postgresql-8.9.4
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-postgresql
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgresql
+      release: RELEASE-NAME
+      role: master
+  serviceName: RELEASE-NAME-postgresql-headless
+  template:
+    metadata:
+      annotations:
+        postgresql.gitlab/init-revision: "1"
+      labels:
+        app: postgresql
+        chart: postgresql-8.9.4
+        heritage: Helm
+        release: RELEASE-NAME
+        role: master
+      name: RELEASE-NAME-postgresql
+    spec:
+      containers:
+      - env:
+        - name: BITNAMI_DEBUG
+          value: "false"
+        - name: POSTGRESQL_PORT_NUMBER
+          value: "5432"
+        - name: POSTGRESQL_VOLUME_DIR
+          value: /bitnami/postgresql
+        - name: PGDATA
+          value: /bitnami/postgresql/data
+        - name: POSTGRES_POSTGRES_PASSWORD_FILE
+          value: /opt/bitnami/postgresql/secrets/postgresql-postgres-password
+        - name: POSTGRES_USER
+          value: gitlab
+        - name: POSTGRES_PASSWORD_FILE
+          value: /opt/bitnami/postgresql/secrets/postgresql-password
+        - name: POSTGRES_DB
+          value: gitlabhq_production
+        - name: POSTGRESQL_ENABLE_LDAP
+          value: "no"
+        image: docker.io/bitnami/postgresql:12.7.0
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - exec pg_isready -U "gitlab" -d "gitlabhq_production" -h 127.0.0.1 -p
+              5432
+          failureThreshold: 6
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        name: RELEASE-NAME-postgresql
+        ports:
+        - containerPort: 5432
+          name: tcp-postgresql
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - -e
+            - |
+              exec pg_isready -U "gitlab" -d "gitlabhq_production" -h 127.0.0.1 -p 5432
+              [ -f /opt/bitnami/postgresql/tmp/.initialized ] || [ -f /bitnami/postgresql/.initialized ]
+          failureThreshold: 6
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        resources:
+          requests:
+            cpu: 250m
+            memory: 256Mi
+        securityContext:
+          runAsUser: 1001
+        volumeMounts:
+        - mountPath: /docker-entrypoint-initdb.d/
+          name: custom-init-scripts
+        - mountPath: /opt/bitnami/postgresql/secrets/
+          name: postgresql-password
+        - mountPath: /dev/shm
+          name: dshm
+        - mountPath: /bitnami/postgresql
+          name: data
+          subPath: null
+        - mountPath: /docker-entrypoint-preinitdb.d/init_revision.sh
+          name: custom-init-scripts
+          subPath: init_revision.sh
+      - env:
+        - name: DATA_SOURCE_URI
+          value: 127.0.0.1:5432/gitlabhq_production?sslmode=disable
+        - name: DATA_SOURCE_PASS_FILE
+          value: /opt/bitnami/postgresql/secrets/postgresql-password
+        - name: DATA_SOURCE_USER
+          value: gitlab
+        image: docker.io/bitnami/postgres-exporter:0.8.0-debian-10-r99
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 6
+          httpGet:
+            path: /
+            port: http-metrics
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        name: metrics
+        ports:
+        - containerPort: 9187
+          name: http-metrics
+        readinessProbe:
+          failureThreshold: 6
+          httpGet:
+            path: /
+            port: http-metrics
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        volumeMounts:
+        - mountPath: /opt/bitnami/postgresql/secrets/
+          name: postgresql-password
+      securityContext:
+        fsGroup: 1001
+      volumes:
+      - name: postgresql-password
+        secret:
+          secretName: RELEASE-NAME-postgresql-password
+      - configMap:
+          name: RELEASE-NAME-postgresql-init-db
+        name: custom-init-scripts
+      - emptyDir:
+          medium: Memory
+          sizeLimit: 1Gi
+        name: dshm
+  updateStrategy:
+    type: RollingUpdate
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 8Gi

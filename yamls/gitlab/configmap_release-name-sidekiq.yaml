@@ -1,0 +1,115 @@
+apiVersion: v1
+data:
+  cable.yml.erb: "production:\n  url: redis://:<%= ERB::Util::url_encode(File.read(\"/etc/gitlab/redis/redis-password\").strip)
+    %>@RELEASE-NAME-redis-master.default.svc:6379\n  \n  id:\n  adapter: redis\n"
+  configure: |
+    set -e
+    config_dir="/init-config"
+    secret_dir="/init-secrets"
+
+    for secret in gitaly registry rails-secrets ; do
+      mkdir -p "${secret_dir}/${secret}"
+      cp -v -r -L "${config_dir}/${secret}/." "${secret_dir}/${secret}/"
+    done
+    for secret in redis minio objectstorage postgres ldap omniauth smtp kas pages oauth-secrets ; do
+      if [ -e "${config_dir}/${secret}" ]; then
+        mkdir -p "${secret_dir}/${secret}"
+        cp -v -r -L "${config_dir}/${secret}/." "${secret_dir}/${secret}/"
+      fi
+    done
+  database.yml.erb: "\nproduction:\n  main:\n    adapter: postgresql\n    encoding:
+    unicode\n    database: gitlabhq_production\n    username: gitlab\n    password:
+    <%= File.read('/etc/gitlab/postgres/psql-password-main').strip.to_json %>\n    host:
+    \"RELEASE-NAME-postgresql.default.svc\"\n    port: 5432\n    connect_timeout:
+    \n    keepalives: \n    keepalives_idle: \n    keepalives_interval: \n    keepalives_count:
+    \n    tcp_user_timeout: \n    application_name: \n    prepared_statements: false\n
+    \   \n    \n"
+  gitlab.yml.erb: "production: &base\n  gitlab:\n    host: gitlab.example.com\n    https:
+    true\n    max_request_duration_seconds: 57\n    impersonation_enabled: \n    application_settings_cache_seconds:
+    60\n    usage_ping_enabled: true\n    seat_link_enabled: true\n    default_can_create_group:
+    true\n    username_changing_enabled: true\n    issue_closing_pattern: \n    default_theme:
+    \n    default_projects_features:\n      issues: true\n      merge_requests: true\n
+    \     wiki: true\n      snippets: true\n      builds: true\n      container_registry:
+    true\n    webhook_timeout: \n    trusted_proxies:\n    time_zone: \"UTC\"        \n
+    \   email_from: \"gitlab@example.com\"\n    email_display_name: \"GitLab\"\n    email_reply_to:
+    \"noreply@example.com\"\n    email_subject_suffix: \"\"\n  \n  gravatar:\n    plain_url:
+    \n    ssl_url: \n  extra:\n    \n    \n    \n    \n    \n  artifacts:\n    enabled:
+    true\n    object_store:\n      enabled: true\n      remote_directory: gitlab-artifacts\n
+    \     direct_upload: true\n      background_upload: false\n      proxy_download:
+    true\n      connection:\n        provider: AWS\n        region: us-east-1\n        host:
+    minio.example.com\n        endpoint: http://RELEASE-NAME-minio-svc.default.svc:9000\n
+    \       path_style: true\n        aws_access_key_id: <%= File.read('/etc/gitlab/minio/accesskey').strip.to_json
+    %>\n        aws_secret_access_key: <%= File.read('/etc/gitlab/minio/secretkey').strip.to_json
+    %>\n  lfs:\n    enabled: true\n    object_store:\n      enabled: true\n      remote_directory:
+    git-lfs\n      direct_upload: true\n      background_upload: false\n      proxy_download:
+    true\n      connection:\n        provider: AWS\n        region: us-east-1\n        host:
+    minio.example.com\n        endpoint: http://RELEASE-NAME-minio-svc.default.svc:9000\n
+    \       path_style: true\n        aws_access_key_id: <%= File.read('/etc/gitlab/minio/accesskey').strip.to_json
+    %>\n        aws_secret_access_key: <%= File.read('/etc/gitlab/minio/secretkey').strip.to_json
+    %>\n  uploads:\n    enabled: true\n    object_store:\n      enabled: true\n      remote_directory:
+    gitlab-uploads\n      direct_upload: true\n      background_upload: false\n      proxy_download:
+    true\n      connection:\n        provider: AWS\n        region: us-east-1\n        host:
+    minio.example.com\n        endpoint: http://RELEASE-NAME-minio-svc.default.svc:9000\n
+    \       path_style: true\n        aws_access_key_id: <%= File.read('/etc/gitlab/minio/accesskey').strip.to_json
+    %>\n        aws_secret_access_key: <%= File.read('/etc/gitlab/minio/secretkey').strip.to_json
+    %>\n  packages:\n    enabled: true\n    object_store:\n      enabled: true\n      remote_directory:
+    gitlab-packages\n      direct_upload: true\n      background_upload: false\n      proxy_download:
+    true\n      connection:\n        provider: AWS\n        region: us-east-1\n        host:
+    minio.example.com\n        endpoint: http://RELEASE-NAME-minio-svc.default.svc:9000\n
+    \       path_style: true\n        aws_access_key_id: <%= File.read('/etc/gitlab/minio/accesskey').strip.to_json
+    %>\n        aws_secret_access_key: <%= File.read('/etc/gitlab/minio/secretkey').strip.to_json
+    %>\n  external_diffs:\n    enabled: false\n    when: \n    object_store:\n      enabled:
+    false\n      remote_directory: gitlab-mr-diffs\n      direct_upload: true\n      background_upload:
+    false\n      proxy_download: true\n  terraform_state:\n    enabled: false\n    object_store:\n
+    \     enabled: false\n      remote_directory: gitlab-terraform-state\n      direct_upload:
+    true\n      background_upload: false\n      proxy_download: true\n  dependency_proxy:\n
+    \   enabled: false\n    object_store:\n      enabled: false\n      remote_directory:
+    gitlab-dependency-proxy\n      direct_upload: true\n      background_upload: false\n
+    \     proxy_download: true\n  pseudonymizer:\n    manifest: config/pseudonymizer.yml\n
+    \   upload:\n      remote_directory: gitlab-pseudo\n      connection:\n        provider:
+    AWS\n        region: us-east-1\n        aws_access_key_id: <%= File.read('/etc/gitlab/minio/accesskey').strip.to_json
+    %>\n        aws_secret_access_key: <%= File.read('/etc/gitlab/minio/secretkey').strip.to_json
+    %>\n        host: minio.example.com\n        endpoint: http://RELEASE-NAME-minio-svc.default.svc:9000\n
+    \       path_style: true\n  \n  sentry:\n    enabled: false\n    dsn: \n    clientside_dsn:
+    \n    environment: \n  \n  sidekiq:\n    log_format: default\n  pages:\n    enabled:
+    false\n    access_control: false\n    artifacts_server: true\n    path: /srv/gitlab/shared/pages\n
+    \   host: pages.example.com\n    port: 443\n    https: true\n    secret_file:
+    /etc/gitlab/pages/secret\n    external_http: false\n    external_https: false\n
+    \   object_store:\n      enabled: true\n      remote_directory: gitlab-pages\n
+    \     connection:\n        provider: AWS\n        region: us-east-1\n        host:
+    minio.example.com\n        endpoint: http://RELEASE-NAME-minio-svc.default.svc:9000\n
+    \       path_style: true\n        aws_access_key_id: <%= File.read('/etc/gitlab/minio/accesskey').strip.to_json
+    %>\n        aws_secret_access_key: <%= File.read('/etc/gitlab/minio/secretkey').strip.to_json
+    %>\n    local_store:\n      enabled: false\n      path: \n  mattermost:\n    enabled:
+    false\n  ## Registry Integration\n  registry:\n    enabled: true\n    host: registry.example.com\n
+    \   api_url: http://RELEASE-NAME-registry.default.svc:5000\n    key: /etc/gitlab/registry/gitlab-registry.key\n
+    \   issuer: gitlab-issuer\n    notification_secret: <%= YAML.load_file(\"/etc/gitlab/registry/notificationSecret\").flatten.first
+    %>\n  gitlab_ci:\n  ldap:\n    enabled: false\n  \n  omniauth:\n    enabled: false\n
+    \   sync_profile_from_provider: []\n    sync_profile_attributes: [\"email\"]\n
+    \   allow_single_sign_on: [\"saml\"]\n    block_auto_created_users: true\n    auto_link_ldap_user:
+    false\n    auto_link_saml_user: false\n    external_providers: []\n  kerberos:\n
+    \   enabled: false\n  shared:\n  gitaly:\n    client_path: /home/git/gitaly/bin\n
+    \   token: <%= File.read('/etc/gitlab/gitaly/gitaly_token').strip.to_json %>\n
+    \ repositories:\n    storages: # You must have at least a `default` storage path.\n
+    \     default:\n        path: /var/opt/gitlab/repo\n        gitaly_address: tcp://RELEASE-NAME-gitaly-0.RELEASE-NAME-gitaly.default.svc:8075\n
+    \     \n  backup:\n    path: \"tmp/backups\"   # Relative paths are relative to
+    Rails.root (default: tmp/backups/)\n  \n  gitlab_shell:\n    path: /home/git/gitlab-shell/\n
+    \   hooks_path: /home/git/gitlab-shell/hooks/\n    upload_pack: true\n    receive_pack:
+    true\n  workhorse:\n  git:\n    bin_path: /usr/bin/git\n  webpack:\n  monitoring:\n
+    \   ip_whitelist:\n      - 127.0.0.0/8\n    sidekiq_exporter:\n      enabled:
+    true\n      address: 0.0.0.0\n      port: 3807\n    sidekiq_health_checks:\n      enabled:
+    true\n      address: 0.0.0.0\n      port: 3807\n"
+  installation_type: |
+    gitlab-helm-chart
+  resque.yml.erb: "production:\n  url: redis://:<%= ERB::Util::url_encode(File.read(\"/etc/gitlab/redis/redis-password\").strip)
+    %>@RELEASE-NAME-redis-master.default.svc:6379\n  \n  id:\n"
+  smtp_settings.rb: ""
+kind: ConfigMap
+metadata:
+  labels:
+    app: sidekiq
+    chart: sidekiq-5.7.0
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-sidekiq
+  namespace: default

@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: RELEASE-NAME-factorio-server-charts
+    chart: RELEASE-NAME-factorio-server-charts
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-factorio-server-charts
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: RELEASE-NAME-factorio-server-charts
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: RELEASE-NAME-factorio-server-charts
+    spec:
+      containers:
+      - env:
+        - name: UPDATE_MODS_ON_START
+          value: "false"
+        - name: INSTANCE_NAME
+          value: Factorio
+        - name: INSTANCE_DESC
+          value: Factorio running on Kubernetes
+        - name: SAVE_NAME
+          value: replaceMe
+        - name: GENERATE_NEW_SAVE
+          value: "true"
+        - name: LOAD_LATEST_SAVE
+          value: "true"
+        - name: PORT
+          value: "30000"
+        - name: CONFIG
+          value: /factorio/configs
+        image: factoriotools/factorio:latest
+        imagePullPolicy: Always
+        name: RELEASE-NAME-factorio-server-charts
+        ports:
+        - containerPort: 30000
+          name: factorio
+          protocol: UDP
+        - containerPort: 27015
+          protocol: TCP
+        resources:
+          requests:
+            cpu: 500m
+            memory: 512Mi
+        securityContext:
+          runAsUser: 0
+        volumeMounts:
+        - mountPath: /factorio
+          name: datadir
+      initContainers:
+      - command:
+        - /bin/bash
+        - -ec
+        - |
+          mkdir -p /factorio/configs
+          mkdir -p /factorio/config
+          cp --verbose /deployed-configs/* /factorio/configs
+          #sleep 100
+          chown -vR factorio:factorio /factorio
+          chmod -vR 777 /factorio/configs
+          ls -alth /factorio
+        image: factoriotools/factorio:latest
+        imagePullPolicy: Always
+        name: volume-permissions-serversettingsconfig
+        securityContext:
+          runAsUser: 0
+        volumeMounts:
+        - mountPath: /factorio
+          name: datadir
+        - mountPath: /deployed-configs
+          name: RELEASE-NAME-factorio-server-charts-serversettingsconfig
+      volumes:
+      - name: datadir
+        persistentVolumeClaim:
+          claimName: RELEASE-NAME-factorio-server-charts-datadir
+      - configMap:
+          name: RELEASE-NAME-factorio-server-charts-serversettingsconfig
+        name: RELEASE-NAME-factorio-server-charts-serversettingsconfig
+      - configMap:
+          name: RELEASE-NAME-factorio-server-charts-mod-downloader-configmap
+        name: RELEASE-NAME-factorio-server-charts-mod-downloader-configmap

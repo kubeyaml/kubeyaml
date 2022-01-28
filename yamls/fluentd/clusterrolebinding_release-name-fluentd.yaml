@@ -1,0 +1,18 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: fluentd
+    app.kubernetes.io/version: v1.12.4
+    helm.sh/chart: fluentd-0.3.5
+  name: RELEASE-NAME-fluentd
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: RELEASE-NAME-fluentd
+subjects:
+- kind: ServiceAccount
+  name: RELEASE-NAME-fluentd
+  namespace: default

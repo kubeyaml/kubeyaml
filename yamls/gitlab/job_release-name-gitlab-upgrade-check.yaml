@@ -1,0 +1,59 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    helm.sh/hook: pre-upgrade
+    helm.sh/hook-delete-policy: hook-succeeded,before-hook-creation
+    helm.sh/hook-weight: "-10"
+  labels:
+    app: gitlab
+    chart: gitlab-5.7.0
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-gitlab-upgrade-check
+  namespace: default
+spec:
+  backoffLimit: 2
+  template:
+    metadata:
+      labels:
+        app: gitlab
+        release: RELEASE-NAME
+    spec:
+      containers:
+      - command:
+        - /bin/sh
+        - /scripts/runcheck
+        env:
+        - name: GITLAB_VERSION
+          value: 14.7.0
+        - name: CHART_VERSION
+          value: 5.7.0
+        image: registry.gitlab.com/gitlab-org/cloud-native/mirror/images/busybox:latest
+        name: run-check
+        resources:
+          requests:
+            cpu: 50m
+        volumeMounts:
+        - mountPath: /chart-info
+          name: chart-info
+        - mountPath: /scripts
+          name: scripts
+        - mountPath: /etc/secrets/postgresql
+          name: postgresql-secret
+      restartPolicy: Never
+      securityContext:
+        fsGroup: 65534
+        runAsUser: 65534
+      volumes:
+      - configMap:
+          name: RELEASE-NAME-gitlab-chart-info
+          optional: true
+        name: chart-info
+      - configMap:
+          name: RELEASE-NAME-gitlab-upgrade-check
+        name: scripts
+      - name: postgresql-secret
+        secret:
+          optional: true
+          secretName: RELEASE-NAME-postgresql-password

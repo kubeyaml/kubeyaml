@@ -1,0 +1,31 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    cert-manager.io/issuer: RELEASE-NAME-issuer
+    kubernetes.io/ingress.class: RELEASE-NAME-nginx
+    kubernetes.io/ingress.provider: nginx
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "900"
+    nginx.ingress.kubernetes.io/proxy-request-buffering: "off"
+  labels:
+    app: registry
+    chart: registry-0.7.0
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-registry
+  namespace: default
+spec:
+  rules:
+  - host: registry.example.com
+    http:
+      paths:
+      - backend:
+          serviceName: RELEASE-NAME-registry
+          servicePort: 5000
+        path: /
+  tls:
+  - hosts:
+    - registry.example.com
+    secretName: RELEASE-NAME-registry-tls

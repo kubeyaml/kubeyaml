@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: RELEASE-NAME-logstash
+    chart: logstash
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-logstash
+spec:
+  podManagementPolicy: Parallel
+  replicas: 1
+  selector:
+    matchLabels:
+      app: RELEASE-NAME-logstash
+      release: RELEASE-NAME
+  serviceName: RELEASE-NAME-logstash-headless
+  template:
+    metadata:
+      annotations: null
+      labels:
+        app: RELEASE-NAME-logstash
+        chart: logstash
+        heritage: Helm
+        release: RELEASE-NAME
+      name: RELEASE-NAME-logstash
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - RELEASE-NAME-logstash
+            topologyKey: kubernetes.io/hostname
+      containers:
+      - env:
+        - name: LS_JAVA_OPTS
+          value: -Xmx1g -Xms1g
+        image: docker.elastic.co/logstash/logstash:7.16.3
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 300
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        name: logstash
+        ports:
+        - containerPort: 9600
+          name: http
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          successThreshold: 3
+          timeoutSeconds: 5
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 1536Mi
+          requests:
+            cpu: 100m
+            memory: 1536Mi
+        securityContext:
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
+          runAsUser: 1000
+        volumeMounts: null
+      securityContext:
+        fsGroup: 1000
+        runAsUser: 1000
+      terminationGracePeriodSeconds: 120
+      volumes: null
+  updateStrategy:
+    type: RollingUpdate

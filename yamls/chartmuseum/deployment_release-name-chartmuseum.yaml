@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: chartmuseum
+    app.kubernetes.io/version: 0.13.1
+    helm.sh/chart: chartmuseum-3.4.1
+  name: RELEASE-NAME-chartmuseum
+spec:
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: RELEASE-NAME
+      app.kubernetes.io/name: chartmuseum
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 0
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/name: chartmuseum
+    spec:
+      automountServiceAccountToken: false
+      containers:
+      - args:
+        - --port=8080
+        - --storage-local-rootdir=/storage
+        env:
+        - name: CHART_POST_FORM_FIELD_NAME
+          value: chart
+        - name: DISABLE_API
+          value: "true"
+        - name: DISABLE_METRICS
+          value: "true"
+        - name: LOG_JSON
+          value: "true"
+        - name: PROV_POST_FORM_FIELD_NAME
+          value: prov
+        - name: STORAGE
+          value: local
+        image: ghcr.io/helm/chartmuseum:v0.13.1
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: chartmuseum
+        ports:
+        - containerPort: 8080
+          name: http
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        securityContext: {}
+        volumeMounts:
+        - mountPath: /storage
+          name: storage-volume
+      securityContext:
+        fsGroup: 1000
+      serviceAccountName: default
+      volumes:
+      - emptyDir: {}
+        name: storage-volume

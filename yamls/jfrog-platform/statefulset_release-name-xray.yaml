@@ -1,0 +1,490 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: xray
+    chart: xray-103.38.2
+    component: xray
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-xray
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: xray
+      component: xray
+      release: RELEASE-NAME
+  serviceName: RELEASE-NAME-xray
+  template:
+    metadata:
+      annotations:
+        checksum/database-secrets: 119b3ad6fbe1011e5373aeb383e82272ecb820ab3fb629ba80731eefe0dc8776
+        checksum/systemyaml: bff33eab5c83044deeab3bd1ce132b4ba59e07a3e9c93aa33717f68e8260189f
+      labels:
+        app: xray
+        component: xray
+        release: RELEASE-NAME
+    spec:
+      containers:
+      - command:
+        - /bin/sh
+        - -c
+        - |
+          exec /opt/jfrog/router/app/bin/entrypoint-router.sh;
+        env:
+        - name: JF_ROUTER_TOPOLOGY_LOCAL_REQUIREDSERVICETYPES
+          value: jfxr,jfxana,jfxidx,jfxpst,jfob
+        image: releases-docker.jfrog.io/jfrog/router:7.28.2
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 10
+          httpGet:
+            path: /router/api/v1/system/health
+            port: 8082
+            scheme: HTTP
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: router
+        ports:
+        - containerPort: 8082
+          name: http-router
+        readinessProbe:
+          failureThreshold: 10
+          httpGet:
+            path: /router/api/v1/system/health
+            port: 8082
+            scheme: HTTP
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources: {}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - NET_RAW
+          runAsNonRoot: true
+          runAsUser: 1035
+        startupProbe:
+          failureThreshold: 60
+          httpGet:
+            path: /router/api/v1/system/health
+            port: 8082
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          timeoutSeconds: 1
+        volumeMounts:
+        - mountPath: /var/opt/jfrog/router
+          name: data-volume
+      - command:
+        - /bin/sh
+        - -c
+        - |
+          exec /opt/jfrog/observability/app/bin/entrypoint-observability.sh;
+        image: releases-docker.jfrog.io/jfrog/observability:1.1.4
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - curl --fail --max-time 1 http://localhost:8036/api/v1/system/liveness
+          failureThreshold: 10
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        name: observability
+        resources: {}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - NET_RAW
+          runAsNonRoot: true
+        startupProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - curl --fail --max-time 1 http://localhost:8036/api/v1/system/readiness
+          failureThreshold: 90
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          timeoutSeconds: 5
+        volumeMounts:
+        - mountPath: /var/opt/jfrog/observability
+          name: data-volume
+      - command:
+        - /bin/bash
+        - -c
+        - |
+          exec /opt/jfrog/xray/app/bin/wrapper.sh;
+        env:
+        - name: JF_SHARED_DATABASE_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: db-user
+              name: RELEASE-NAME-xray-database-creds
+        - name: JF_SHARED_DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: db-password
+              name: RELEASE-NAME-xray-database-creds
+        - name: JF_SHARED_DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              key: db-url
+              name: RELEASE-NAME-xray-database-creds
+        image: releases-docker.jfrog.io/jfrog/xray-server:3.38.2
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /api/v1/system/ping
+            port: 8000
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: xray-server
+        ports:
+        - containerPort: 8000
+          name: http-server
+        readinessProbe:
+          failureThreshold: 10
+          httpGet:
+            path: /api/v1/system/ping
+            port: 8000
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources: {}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - NET_RAW
+          runAsNonRoot: true
+          runAsUser: 1035
+        startupProbe:
+          failureThreshold: 60
+          httpGet:
+            path: /api/v1/system/ping
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          timeoutSeconds: 1
+        volumeMounts:
+        - mountPath: /var/opt/jfrog/xray
+          name: data-volume
+      - command:
+        - /bin/bash
+        - -c
+        - |
+          exec /opt/jfrog/xray/app/bin/wrapper.sh;
+        env:
+        - name: JF_SHARED_DATABASE_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: db-user
+              name: RELEASE-NAME-xray-database-creds
+        - name: JF_SHARED_DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: db-password
+              name: RELEASE-NAME-xray-database-creds
+        - name: JF_SHARED_DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              key: db-url
+              name: RELEASE-NAME-xray-database-creds
+        - name: XRAY_HA_NODE_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: XRAY_K8S_ENV
+          value: "true"
+        image: releases-docker.jfrog.io/jfrog/xray-analysis:3.38.2
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /api/v1/system/ping
+            port: 7000
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: xray-analysis
+        ports:
+        - containerPort: 7000
+          name: http-analysis
+        readinessProbe:
+          failureThreshold: 10
+          httpGet:
+            path: /api/v1/system/ping
+            port: 7000
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources: {}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - NET_RAW
+          runAsNonRoot: true
+          runAsUser: 1035
+        startupProbe:
+          failureThreshold: 60
+          httpGet:
+            path: /api/v1/system/ping
+            port: 7000
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          timeoutSeconds: 1
+        volumeMounts:
+        - mountPath: /var/opt/jfrog/xray
+          name: data-volume
+      - command:
+        - /bin/bash
+        - -c
+        - |
+          exec /opt/jfrog/xray/app/bin/wrapper.sh;
+        env:
+        - name: JF_SHARED_DATABASE_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: db-user
+              name: RELEASE-NAME-xray-database-creds
+        - name: JF_SHARED_DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: db-password
+              name: RELEASE-NAME-xray-database-creds
+        - name: JF_SHARED_DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              key: db-url
+              name: RELEASE-NAME-xray-database-creds
+        - name: XRAY_HA_NODE_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: XRAY_K8S_ENV
+          value: "true"
+        image: releases-docker.jfrog.io/jfrog/xray-indexer:3.38.2
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /api/v1/system/ping
+            port: 7002
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: xray-indexer
+        ports:
+        - containerPort: 7002
+          name: http-indexer
+        readinessProbe:
+          failureThreshold: 10
+          httpGet:
+            path: /api/v1/system/ping
+            port: 7002
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources: {}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - NET_RAW
+          runAsNonRoot: true
+          runAsUser: 1035
+        startupProbe:
+          failureThreshold: 60
+          httpGet:
+            path: /api/v1/system/ping
+            port: 7002
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          timeoutSeconds: 1
+        volumeMounts:
+        - mountPath: /var/opt/jfrog/xray
+          name: data-volume
+      - command:
+        - /bin/bash
+        - -c
+        - |
+          exec /opt/jfrog/xray/app/bin/wrapper.sh;
+        env:
+        - name: JF_SHARED_DATABASE_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: db-user
+              name: RELEASE-NAME-xray-database-creds
+        - name: JF_SHARED_DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: db-password
+              name: RELEASE-NAME-xray-database-creds
+        - name: JF_SHARED_DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              key: db-url
+              name: RELEASE-NAME-xray-database-creds
+        - name: XRAY_K8S_ENV
+          value: "true"
+        image: releases-docker.jfrog.io/jfrog/xray-persist:3.38.2
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /api/v1/system/ping
+            port: 7003
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: xray-persist
+        ports:
+        - containerPort: 7003
+          name: http-persist
+        readinessProbe:
+          failureThreshold: 10
+          httpGet:
+            path: /api/v1/system/ping
+            port: 7003
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources: {}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - NET_RAW
+          runAsNonRoot: true
+          runAsUser: 1035
+        startupProbe:
+          failureThreshold: 60
+          httpGet:
+            path: /api/v1/system/ping
+            port: 7003
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          timeoutSeconds: 1
+        volumeMounts:
+        - mountPath: /var/opt/jfrog/xray
+          name: data-volume
+      initContainers:
+      - command:
+        - /bin/bash
+        - -c
+        - |
+          until nc -z -w 5 RELEASE-NAME-artifactory 8082; do echo "Waiting for artifactory to start"; sleep 10; done; echo "Running init db scripts"; su postgres -c "bash /scripts/setupPostgres.sh"
+        env:
+        - name: PGUSERNAME
+          value: postgres
+        - name: DB_HOST
+          value: RELEASE-NAME-postgresql
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_SSL_MODE
+          value: disable
+        - name: DB_NAME
+          value: xray
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: db-user
+              name: RELEASE-NAME-xray-database-creds
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: db-password
+              name: RELEASE-NAME-xray-database-creds
+        - name: PGPASSWORD
+          value: postgres
+        - name: CHART_NAME
+          value: xray
+        image: releases-docker.jfrog.io/postgres:13.4-alpine
+        imagePullPolicy: Always
+        name: postgres-setup-init
+        securityContext:
+          runAsUser: 0
+        volumeMounts:
+        - mountPath: /scripts
+          name: postgres-setup-init-vol
+      - command:
+        - bash
+        - -c
+        - |
+          if [[ -e "/var/opt/jfrog/xray/etc/filebeat.yaml" ]]; then chmod 644 /var/opt/jfrog/xray/etc/filebeat.yaml; fi; echo "Copy system.yaml to /var/opt/jfrog/xray/etc"; mkdir -p /var/opt/jfrog/xray/etc; cp -fv /tmp/etc/system.yaml /var/opt/jfrog/xray/etc/system.yaml; echo "Remove /var/opt/jfrog/xray/lost+found folder if exists"; rm -rfv /var/opt/jfrog/xray/lost+found; echo "Copy joinKey to /var/opt/jfrog/xray/etc/security"; mkdir -p /var/opt/jfrog/xray/etc/security; echo ${XRAY_JOIN_KEY} > /var/opt/jfrog/xray/etc/security/join.key; echo "Copy masterKey to /var/opt/jfrog/xray/etc/security"; mkdir -p /var/opt/jfrog/xray/etc/security; echo ${XRAY_MASTER_KEY} > /var/opt/jfrog/xray/etc/security/master.key;
+        env:
+        - name: XRAY_JOIN_KEY
+          valueFrom:
+            secretKeyRef:
+              key: join-key
+              name: RELEASE-NAME-xray
+        - name: XRAY_MASTER_KEY
+          valueFrom:
+            secretKeyRef:
+              key: master-key
+              name: RELEASE-NAME-xray
+        image: releases-docker.jfrog.io/jfrog/ubi-minimal:8.5-204
+        name: copy-system-yaml
+        resources:
+          limits:
+            cpu: "1"
+            memory: 1Gi
+          requests:
+            cpu: 10m
+            memory: 50Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - NET_RAW
+          runAsNonRoot: true
+        volumeMounts:
+        - mountPath: /var/opt/jfrog/xray
+          name: data-volume
+        - mountPath: /tmp/etc/system.yaml
+          name: systemyaml
+          subPath: system.yaml
+      securityContext:
+        fsGroup: 1035
+        runAsUser: 1035
+      serviceAccountName: default
+      volumes:
+      - name: systemyaml
+        secret:
+          secretName: RELEASE-NAME-xray-system-yaml
+      - configMap:
+          name: RELEASE-NAME-setup-script
+        name: postgres-setup-init-vol
+  updateStrategy:
+    type: RollingUpdate
+  volumeClaimTemplates:
+  - metadata:
+      name: data-volume
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 200Gi

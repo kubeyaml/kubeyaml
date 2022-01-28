@@ -1,0 +1,151 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: redis
+    chart: redis-11.3.4
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-redis-master
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: redis
+      release: RELEASE-NAME
+      role: master
+  serviceName: RELEASE-NAME-redis-headless
+  template:
+    metadata:
+      annotations:
+        checksum/configmap: b9fd235e5f8b12be6a71b155dfa5c3d8af4c4c6fea3c7a0bf0b91ce3963bf4d7
+        checksum/health: a176b9eaeb32a64a541f5788bf1f58f024833ad5b961ec163a913e0b5004e50c
+        checksum/secret: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+        prometheus.io/port: "9121"
+        prometheus.io/scrape: "true"
+      labels:
+        app: redis
+        chart: redis-11.3.4
+        release: RELEASE-NAME
+        role: master
+    spec:
+      containers:
+      - command:
+        - /bin/bash
+        - -c
+        - /opt/bitnami/scripts/start-scripts/start-master.sh
+        env:
+        - name: REDIS_REPLICATION_MODE
+          value: master
+        - name: REDIS_PASSWORD_FILE
+          value: /opt/bitnami/redis/secrets/redis-password
+        - name: REDIS_TLS_ENABLED
+          value: "no"
+        - name: REDIS_PORT
+          value: "6379"
+        image: docker.io/bitnami/redis:6.0.9-debian-10-r0
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - /health/ping_liveness_local.sh 5
+          failureThreshold: 5
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          successThreshold: 1
+          timeoutSeconds: 6
+        name: redis
+        ports:
+        - containerPort: 6379
+          name: redis
+        readinessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - /health/ping_readiness_local.sh 1
+          failureThreshold: 5
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          successThreshold: 1
+          timeoutSeconds: 2
+        resources: null
+        securityContext:
+          runAsUser: 1001
+        volumeMounts:
+        - mountPath: /opt/bitnami/scripts/start-scripts
+          name: start-scripts
+        - mountPath: /health
+          name: health
+        - mountPath: /opt/bitnami/redis/secrets/
+          name: redis-password
+        - mountPath: /data
+          name: redis-data
+          subPath: null
+        - mountPath: /opt/bitnami/redis/mounted-etc
+          name: config
+        - mountPath: /opt/bitnami/redis/etc/
+          name: redis-tmp-conf
+      - command:
+        - /bin/bash
+        - -c
+        - |
+          if [[ -f '/secrets/redis-password' ]]; then
+          export REDIS_PASSWORD=$(cat /secrets/redis-password)
+          fi
+          redis_exporter
+        env:
+        - name: REDIS_ALIAS
+          value: RELEASE-NAME-redis
+        image: docker.io/bitnami/redis-exporter:1.12.1-debian-10-r11
+        imagePullPolicy: IfNotPresent
+        name: metrics
+        ports:
+        - containerPort: 9121
+          name: metrics
+        resources: null
+        volumeMounts:
+        - mountPath: /secrets/
+          name: redis-password
+      securityContext:
+        fsGroup: 1001
+      serviceAccountName: default
+      volumes:
+      - configMap:
+          defaultMode: 493
+          name: RELEASE-NAME-redis-scripts
+        name: start-scripts
+      - configMap:
+          defaultMode: 493
+          name: RELEASE-NAME-redis-health
+        name: health
+      - name: redis-password
+        secret:
+          items:
+          - key: secret
+            path: redis-password
+          secretName: RELEASE-NAME-redis-secret
+      - configMap:
+          name: RELEASE-NAME-redis
+        name: config
+      - emptyDir: {}
+        name: redis-tmp-conf
+  updateStrategy:
+    type: RollingUpdate
+  volumeClaimTemplates:
+  - metadata:
+      labels:
+        app: redis
+        component: master
+        heritage: Helm
+        release: RELEASE-NAME
+      name: redis-data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 8Gi
+      selector: null

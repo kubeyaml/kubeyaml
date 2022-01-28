@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    helm.sh/hook: test-success
+  name: RELEASE-NAME-ui-test-4k9jh
+  namespace: default
+spec:
+  containers:
+  - command:
+    - /tools/bats/bin/bats
+    - -t
+    - /tests/run.sh
+    image: jenkins/jenkins:2.319.2-jdk11
+    name: RELEASE-NAME-ui-test
+    volumeMounts:
+    - mountPath: /tests
+      name: tests
+      readOnly: true
+    - mountPath: /tools
+      name: tools
+  initContainers:
+  - args:
+    - |
+      # copy bats to tools dir
+      set -ex
+      cp -R /opt/bats /tools/bats/
+    command:
+    - bash
+    - -c
+    image: bats/bats:1.2.1
+    name: test-framework
+    volumeMounts:
+    - mountPath: /tools
+      name: tools
+  restartPolicy: Never
+  volumes:
+  - configMap:
+      name: RELEASE-NAME-jenkins-tests
+    name: tests
+  - emptyDir: {}
+    name: tools

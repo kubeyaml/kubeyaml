@@ -1,0 +1,56 @@
+apiVersion: v1
+data:
+  sshd_config: "#\t$OpenBSD: sshd_config,v 1.101 2017/03/14 07:19:07 djm Exp $\n\n#
+    This is the sshd server system-wide configuration file.  See\n# sshd_config(5)
+    for more information.\n\n# This sshd was compiled with PATH=/bin:/usr/bin:/sbin:/usr/sbin\n\n#
+    The strategy used for options in the default sshd_config shipped with\n# OpenSSH
+    is to specify options with their default value where\n# possible, but leave them
+    commented.  Uncommented options override the\n# default value.\n\nPort 2222\n#AddressFamily
+    any\n#ListenAddress 0.0.0.0\n#ListenAddress ::\n\n#HostKey /etc/ssh/ssh_host_rsa_key\n#HostKey
+    /etc/ssh/ssh_host_dsa_key\n#HostKey /etc/ssh/ssh_host_ecdsa_key\n#HostKey /etc/ssh/ssh_host_ed25519_key\n\n#
+    Ciphers and keying\n#RekeyLimit default none\n\n# Logging\n#SyslogFacility AUTH\nLogLevel
+    ERROR\n\n# Authentication:\n\nPermitRootLogin no\n#StrictModes yes\n#MaxAuthTries
+    6\n#MaxSessions 10\n\n#PubkeyAuthentication yes\n\n#AuthorizedPrincipalsFile none\n\n#
+    For this to work you will also need host keys in /etc/ssh/ssh_known_hosts\n#HostbasedAuthentication
+    no\n# Change to yes if you don't trust ~/.ssh/known_hosts for\n# HostbasedAuthentication\n#IgnoreUserKnownHosts
+    no\n# Don't read the user's ~/.rhosts and ~/.shosts files\n#IgnoreRhosts yes\n\n#PermitEmptyPasswords
+    no\n\n# Change to no to disable s/key passwords\n#ChallengeResponseAuthentication
+    yes\n\n# Kerberos options\n#KerberosAuthentication no\n#KerberosOrLocalPasswd
+    yes\n#KerberosTicketCleanup yes\n#KerberosGetAFSToken no\n\n# GSSAPI options\n#GSSAPIAuthentication
+    no\n#GSSAPICleanupCredentials yes\n\n# Set this to 'yes' to enable PAM authentication,
+    account processing,\n# and session processing. If this is enabled, PAM authentication
+    will\n# be allowed through the ChallengeResponseAuthentication and\n# PasswordAuthentication.
+    \ Depending on your PAM configuration,\n# PAM authentication via ChallengeResponseAuthentication
+    may bypass\n# the setting of \"PermitRootLogin without-password\".\n# If you just
+    want the PAM account and session checks to run without\n# PAM authentication,
+    then enable this but set PasswordAuthentication\n# and ChallengeResponseAuthentication
+    to 'no'.\n#UsePAM no\n\n#AllowAgentForwarding yes\n#AllowTcpForwarding yes\n#GatewayPorts
+    no\n#X11Forwarding no\n#X11DisplayOffset 10\n#X11UseLocalhost yes\n#PermitTTY
+    yes\n#PrintMotd yes\n#PrintLastLog yes\n#TCPKeepAlive yes\n#UseLogin no\n#PermitUserEnvironment
+    no\n#Compression delayed\nClientAliveInterval 0\n#ClientAliveCountMax 3\n#UseDNS
+    no\nPidFile /srv/sshd/sshd.pid\n#PermitTunnel no\n#ChrootDirectory none\n#VersionAddendum
+    none\n\n# no default banner path\n#Banner none\n\n# override default of no subsystems\n#
+    Subsystem\tsftp\t/usr/lib/ssh/sftp-server\n\n# the following are HPN related configuration
+    options\n# tcp receive buffer polling. disable in non autotuning kernels\n#TcpRcvBufPoll
+    yes\n\n# disable hpn performance boosts\n#HPNDisabled no\n\n# buffer size for
+    hpn to non-hpn connections\n#HPNBufferSize 2048\n\n\n# Example of overriding settings
+    on a per-user basis\n#Match User anoncvs\n#\tX11Forwarding no\n#\tAllowTcpForwarding
+    no\n#\tPermitTTY no\n#\tForceCommand cvs server\n\n# The default is to check both
+    .ssh/authorized_keys and .ssh/authorized_keys2\n# but this is overridden so installations
+    will only check .ssh/authorized_keys\nAuthorizedKeysFile\t.ssh/authorized_keys\n\nAuthorizedKeysCommand
+    /authorized_keys %u %k\nAuthorizedKeysCommandUser git\n\nPasswordAuthentication
+    no\n\nAllowUsers git\n\n# Enable the use of Git protcol v2\nAcceptEnv GIT_PROTOCOL\n\n#
+    Hard disable all forwarding\nDisableForwarding yes\n\n# Specifies the maximum
+    number of concurrent unauthenticated connections to the SSH daemon.\n# See `man
+    sshd_config(5)`\n\nMaxStartups 10:30:100\n\n\n# Specifies amount of time athat
+    the server will disconnect after if the user has not successfully logged in\nLoginGraceTime
+    120\n"
+kind: ConfigMap
+metadata:
+  labels:
+    app: gitlab-shell
+    chart: gitlab-shell-5.7.0
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-gitlab-shell-sshd
+  namespace: default

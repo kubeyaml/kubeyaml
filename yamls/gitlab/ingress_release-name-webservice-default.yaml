@@ -1,0 +1,32 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    cert-manager.io/issuer: RELEASE-NAME-issuer
+    kubernetes.io/ingress.class: RELEASE-NAME-nginx
+    kubernetes.io/ingress.provider: nginx
+    nginx.ingress.kubernetes.io/proxy-body-size: 512m
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "15"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/service-upstream: "true"
+  labels:
+    app: webservice
+    chart: webservice-5.7.0
+    gitlab.com/webservice-name: default
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-webservice-default
+  namespace: default
+spec:
+  rules:
+  - host: gitlab.example.com
+    http:
+      paths:
+      - backend:
+          serviceName: RELEASE-NAME-webservice-default
+          servicePort: 8181
+        path: /
+  tls:
+  - hosts:
+    - gitlab.example.com
+    secretName: RELEASE-NAME-gitlab-tls

@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    helm.sh/hook: test
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: nats
+    app.kubernetes.io/version: 2.7.1
+    helm.sh/chart: nats-0.12.1
+  name: RELEASE-NAME-nats-test-request-reply
+spec:
+  containers:
+  - command:
+    - /bin/sh
+    - -ec
+    - |
+      nats reply -s nats://$NATS_HOST:4222 'name.>' --command "echo 1" &
+    - |
+      "&&"
+    - |
+      name=$(nats request -s nats://$NATS_HOST:4222 name.test '' 2>/dev/null)
+    - |
+      "&&"
+    - |
+      [ $name = test ]
+    env:
+    - name: NATS_HOST
+      value: RELEASE-NAME-nats
+    image: synadia/nats-box
+    name: nats-box
+  restartPolicy: Never

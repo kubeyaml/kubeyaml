@@ -1,0 +1,141 @@
+apiVersion: v1
+data:
+  check-live: |
+    #!/bin/bash
+    if /usr/bin/pgrep -f .*register-the-runner; then
+      exit 0
+    elif /usr/bin/pgrep gitlab.*runner; then
+      exit 0
+    else
+      exit 1
+    fi
+  config.template.toml: "[[runners]]\n  [runners.kubernetes]\n  image = \"ubuntu:18.04\"\n
+    \ [runners.cache]\n    Type = \"s3\"\n    Path = \"gitlab-runner\"\n    Shared
+    = true\n    [runners.cache.s3]\n      ServerAddress = \"minio.example.com\"\n
+    \     BucketName = \"runner-cache\"\n      BucketLocation = \"us-east-1\"\n      Insecure
+    = false\n  \n"
+  config.toml: |
+    concurrent = 10
+    check_interval = 30
+    log_level = "info"
+    listen_address = ':9252'
+    [session_server]
+      session_timeout = 1800
+      listen_address = "0.0.0.0:8093"
+      advertise_address = "SESSION_SERVER_IP:9000"
+  configure: |
+    set -e
+    cp /init-secrets/* /secrets
+  entrypoint: |
+    #!/bin/bash
+    set -e
+
+    mkdir -p /home/gitlab-runner/.gitlab-runner/
+
+    cp /configmaps/config.toml /home/gitlab-runner/.gitlab-runner/
+    quit() {
+      kill -TERM "$child"
+    }
+
+    trap quit QUIT TERM
+
+    sh /configmaps/set-session-server-address &
+    child=$!
+    wait "$child"
+
+    # Set up environment variables for cache
+    if [[ -f /secrets/accesskey && -f /secrets/secretkey ]]; then
+      export CACHE_S3_ACCESS_KEY=$(cat /secrets/accesskey)
+      export CACHE_S3_SECRET_KEY=$(cat /secrets/secretkey)
+    fi
+
+    if [[ -f /secrets/gcs-applicaton-credentials-file ]]; then
+      export GOOGLE_APPLICATION_CREDENTIALS="/secrets/gcs-applicaton-credentials-file"
+    elif [[ -f /secrets/gcs-application-credentials-file ]]; then
+      export GOOGLE_APPLICATION_CREDENTIALS="/secrets/gcs-application-credentials-file"
+    else
+      if [[ -f /secrets/gcs-access-id && -f /secrets/gcs-private-key ]]; then
+        export CACHE_GCS_ACCESS_ID=$(cat /secrets/gcs-access-id)
+        # echo -e used to make private key multiline (in google json auth key private key is oneline with \n)
+        export CACHE_GCS_PRIVATE_KEY=$(echo -e $(cat /secrets/gcs-private-key))
+      fi
+    fi
+
+    if [[ -f /secrets/azure-account-name && -f /secrets/azure-account-key ]]; then
+      export CACHE_AZURE_ACCOUNT_NAME=$(cat /secrets/azure-account-name)
+      export CACHE_AZURE_ACCOUNT_KEY=$(cat /secrets/azure-account-key)
+    fi
+
+    if [[ -f /secrets/runner-registration-token ]]; then
+      export REGISTRATION_TOKEN=$(cat /secrets/runner-registration-token)
+    fi
+
+    if [[ -f /secrets/runner-token ]]; then
+      export CI_SERVER_TOKEN=$(cat /secrets/runner-token)
+    fi
+
+    # Validate this also at runtime in case the user has set a custom secret
+    if [[ ! -z "$CI_SERVER_TOKEN" && "1" -ne "1" ]]; then
+      echo "Using a runner token with more than 1 replica is not supported."
+      exit 1
+    fi
+
+    # Register the runner
+    if ! sh /configmaps/register-the-runner; then
+      exit 1
+    fi
+
+    # Run pre-entrypoint-script
+    if ! bash /configmaps/pre-entrypoint-script; then
+      exit 1
+    fi
+
+    # Start the runner
+    exec /entrypoint run --user=gitlab-runner \
+      --working-directory=/home/gitlab-runner
+  pre-entrypoint-script: ""
+  register-the-runner: |
+    #!/bin/bash
+    MAX_REGISTER_ATTEMPTS=30
+
+    for i in $(seq 1 "${MAX_REGISTER_ATTEMPTS}"); do
+      echo "Registration attempt ${i} of ${MAX_REGISTER_ATTEMPTS}"
+      /entrypoint register \
+        --template-config /configmaps/config.template.toml \
+        --non-interactive
+
+      retval=$?
+
+      if [ ${retval} = 0 ]; then
+        break
+      elif [ ${i} = ${MAX_REGISTER_ATTEMPTS} ]; then
+        exit 1
+      fi
+
+      sleep 5
+    done
+
+    exit 0
+  set-session-server-address: "#!/bin/bash\nAPISERVER=https://kubernetes.default.svc
+    \\\n  && SERVICEACCOUNT=/var/run/secrets/kubernetes.io/serviceaccount \\\n  &&
+    NAMESPACE=$(cat ${SERVICEACCOUNT}/namespace) \\\n  && TOKEN=$(cat ${SERVICEACCOUNT}/token)
+    \\\n  && CACERT=${SERVICEACCOUNT}/ca.crt \\\n  && header=\"Authorization: Bearer
+    ${TOKEN}\"\n\nSERVICEURL=${APISERVER}/api/v1/namespaces/${NAMESPACE}/services/RELEASE-NAME-gitlab-runner-session-server\n\nhas_address=false\nwhile
+    [ \"${has_address}\" = false ]; do\n  SERVICEIP=$(curl —-silent \\\n    --cacert
+    ${CACERT} \\\n    --header \"${header}\" \\\n    -X GET ${SERVICEURL} 2>/dev/null
+    \\\n    | grep '\"ip\":' | cut -d \":\" -f2 | xargs)\n\n  # for aws, the hostname
+    is available but not the external IP\n  SERVICEHOSTNAME=$(curl —-silent \\\n    --cacert
+    ${CACERT} \\\n    --header \"${header}\" \\\n    -X GET ${SERVICEURL} 2>/dev/null
+    \\\n    | grep '\"hostname\":' | cut -d \":\" -f2 | xargs)\n\n  ADDRESS=\"${SERVICEHOSTNAME:-$SERVICEIP}\"\n
+    \ \n  if [ -z \"${ADDRESS}\" ]\n  then\n    echo \"Service LoadBalancer External
+    Address not yet available\"\n    has_address=false\n    sleep 5\n  else\n    has_address=true\n
+    \   sed -i -e \"s/SESSION_SERVER_IP/${ADDRESS}/g\" /home/gitlab-runner/.gitlab-runner/config.toml\n
+    \ fi\ndone\n"
+kind: ConfigMap
+metadata:
+  labels:
+    app: RELEASE-NAME-gitlab-runner
+    chart: gitlab-runner-0.37.0
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-gitlab-runner

@@ -1,0 +1,51 @@
+apiVersion: v1
+data:
+  _REDIS_URL_CORE: redis://RELEASE-NAME-harbor-redis:6379/0?idle_timeout_seconds=30
+  _REDIS_URL_REG: redis://RELEASE-NAME-harbor-redis:6379/2?idle_timeout_seconds=30
+  CHART_CACHE_DRIVER: redis
+  CHART_REPOSITORY_URL: http://RELEASE-NAME-harbor-chartmuseum
+  CONFIG_PATH: /etc/core/app.conf
+  CORE_LOCAL_URL: http://127.0.0.1:8080
+  CORE_URL: http://RELEASE-NAME-harbor-core:80
+  DATABASE_TYPE: postgresql
+  EXT_ENDPOINT: https://core.harbor.domain
+  HTTP_PROXY: ""
+  HTTPS_PROXY: ""
+  JOBSERVICE_URL: http://RELEASE-NAME-harbor-jobservice
+  LOG_LEVEL: info
+  NO_PROXY: RELEASE-NAME-harbor-core,RELEASE-NAME-harbor-jobservice,RELEASE-NAME-harbor-database,RELEASE-NAME-harbor-chartmuseum,RELEASE-NAME-harbor-notary-server,RELEASE-NAME-harbor-notary-signer,RELEASE-NAME-harbor-registry,RELEASE-NAME-harbor-portal,RELEASE-NAME-harbor-trivy,RELEASE-NAME-harbor-exporter,127.0.0.1,localhost,.local,.internal
+  NOTARY_URL: http://RELEASE-NAME-harbor-notary-server:4443
+  PERMITTED_REGISTRY_TYPES_FOR_PROXY_CACHE: docker-hub,harbor,azure-acr,aws-ecr,google-gcr,quay,docker-registry
+  PORT: "8080"
+  PORTAL_URL: http://RELEASE-NAME-harbor-portal
+  POSTGRESQL_DATABASE: registry
+  POSTGRESQL_HOST: RELEASE-NAME-harbor-database
+  POSTGRESQL_MAX_IDLE_CONNS: "100"
+  POSTGRESQL_MAX_OPEN_CONNS: "900"
+  POSTGRESQL_PORT: "5432"
+  POSTGRESQL_SSLMODE: disable
+  POSTGRESQL_USERNAME: postgres
+  REGISTRY_CONTROLLER_URL: http://RELEASE-NAME-harbor-registry:8080
+  REGISTRY_CREDENTIAL_USERNAME: harbor_registry_user
+  REGISTRY_STORAGE_PROVIDER_NAME: filesystem
+  REGISTRY_URL: http://RELEASE-NAME-harbor-registry:5000
+  TOKEN_SERVICE_URL: http://RELEASE-NAME-harbor-core:80/service/token
+  TRIVY_ADAPTER_URL: http://RELEASE-NAME-harbor-trivy:8080
+  WITH_CHARTMUSEUM: "true"
+  WITH_NOTARY: "true"
+  WITH_TRIVY: "true"
+  app.conf: |
+    appname = Harbor
+    runmode = prod
+    enablegzip = true
+
+    [prod]
+    httpport = 8080
+kind: ConfigMap
+metadata:
+  labels:
+    app: harbor
+    chart: harbor
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-harbor-core

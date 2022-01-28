@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: harbor
+    chart: harbor
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-harbor-core
+spec:
+  ports:
+  - name: http-web
+    port: 80
+    targetPort: 8080
+  selector:
+    app: harbor
+    component: core
+    release: RELEASE-NAME

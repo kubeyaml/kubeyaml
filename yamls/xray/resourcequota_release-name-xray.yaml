@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  labels:
+    app: xray
+    chart: xray-103.41.4
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-xray
+spec:
+  hard:
+    count/jobs.batch: 100

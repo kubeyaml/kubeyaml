@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: harbor
+    chart: harbor
+    component: notary-signer
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-harbor-notary-signer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: harbor
+      component: notary-signer
+      release: RELEASE-NAME
+  template:
+    metadata:
+      annotations:
+        checksum/secret: 1aef5dfbc8c7bdec1405ed18b67a4b4583f6e4f0bf3c346fa2a9896045956ae8
+      labels:
+        app: harbor
+        chart: harbor
+        component: notary-signer
+        heritage: Helm
+        release: RELEASE-NAME
+    spec:
+      automountServiceAccountToken: false
+      containers:
+      - env:
+        - name: MIGRATIONS_PATH
+          value: migrations/signer/postgresql
+        - name: DB_URL
+          value: postgres://postgres:changeit@RELEASE-NAME-harbor-database:5432/notarysigner?sslmode=disable
+        - name: NOTARY_SIGNER_DEFAULTALIAS
+          value: defaultalias
+        image: goharbor/notary-signer-photon:v2.4.1
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 7899
+            scheme: HTTPS
+          initialDelaySeconds: 300
+          periodSeconds: 10
+        name: notary-signer
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 7899
+            scheme: HTTPS
+          initialDelaySeconds: 20
+          periodSeconds: 10
+        volumeMounts:
+        - mountPath: /etc/notary/signer-config.postgres.json
+          name: config
+          subPath: signer.json
+        - mountPath: /etc/ssl/notary/tls.crt
+          name: signer-certificate
+          subPath: tls.crt
+        - mountPath: /etc/ssl/notary/tls.key
+          name: signer-certificate
+          subPath: tls.key
+      securityContext:
+        fsGroup: 10000
+        runAsUser: 10000
+      volumes:
+      - name: config
+        secret:
+          secretName: RELEASE-NAME-harbor-notary-server
+      - name: signer-certificate
+        secret:
+          secretName: RELEASE-NAME-harbor-notary-server

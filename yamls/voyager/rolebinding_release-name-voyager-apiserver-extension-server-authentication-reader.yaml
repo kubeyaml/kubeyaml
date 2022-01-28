@@ -1,0 +1,19 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: voyager
+    app.kubernetes.io/version: v14.1.0
+    helm.sh/chart: voyager-v2022.01.10
+  name: RELEASE-NAME-voyager-apiserver-extension-server-authentication-reader
+  namespace: kube-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: extension-apiserver-authentication-reader
+subjects:
+- kind: ServiceAccount
+  name: RELEASE-NAME-voyager
+  namespace: default

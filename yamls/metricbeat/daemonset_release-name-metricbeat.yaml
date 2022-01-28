@@ -1,0 +1,119 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    app: RELEASE-NAME-metricbeat
+    chart: metricbeat-7.16.3
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-metricbeat
+spec:
+  selector:
+    matchLabels:
+      app: RELEASE-NAME-metricbeat
+      release: RELEASE-NAME
+  template:
+    metadata:
+      annotations:
+        configChecksum: d7b946c2c62cbf6928fed5219effefad2f1a82ab1c875cc7665a8c8b3c86c7c
+      labels:
+        app: RELEASE-NAME-metricbeat
+        chart: metricbeat-7.16.3
+        heritage: Helm
+        release: RELEASE-NAME
+      name: RELEASE-NAME-metricbeat
+    spec:
+      affinity: {}
+      containers:
+      - args:
+        - -e
+        - -E
+        - http.enabled=true
+        - --system.hostfs=/hostfs
+        env:
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        envFrom: []
+        image: docker.elastic.co/beats/metricbeat:7.16.3
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - |
+              #!/usr/bin/env bash -e
+              curl --fail 127.0.0.1:5066
+          failureThreshold: 3
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+        name: metricbeat
+        readinessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - |
+              #!/usr/bin/env bash -e
+              metricbeat test output
+          failureThreshold: 3
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 200Mi
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        securityContext:
+          privileged: false
+          runAsUser: 0
+        volumeMounts:
+        - mountPath: /usr/share/metricbeat/metricbeat.yml
+          name: metricbeat-config
+          readOnly: true
+          subPath: metricbeat.yml
+        - mountPath: /usr/share/metricbeat/data
+          name: data
+        - mountPath: /var/run/docker.sock
+          name: varrundockersock
+          readOnly: true
+        - mountPath: /hostfs/proc
+          name: proc
+          readOnly: true
+        - mountPath: /hostfs/sys/fs/cgroup
+          name: cgroup
+          readOnly: true
+      nodeSelector: {}
+      serviceAccountName: RELEASE-NAME-metricbeat
+      terminationGracePeriodSeconds: 30
+      tolerations: []
+      volumes:
+      - configMap:
+          defaultMode: 384
+          name: RELEASE-NAME-metricbeat-daemonset-config
+        name: metricbeat-config
+      - hostPath:
+          path: /var/lib/RELEASE-NAME-metricbeat-default-data
+          type: DirectoryOrCreate
+        name: data
+      - hostPath:
+          path: /var/run/docker.sock
+        name: varrundockersock
+      - hostPath:
+          path: /proc
+        name: proc
+      - hostPath:
+          path: /sys/fs/cgroup
+        name: cgroup
+  updateStrategy:
+    type: RollingUpdate

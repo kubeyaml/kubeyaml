@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  labels:
+    app: RELEASE-NAME-mysql
+    chart: mysql-1.6.4
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-mysql
+  namespace: default
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi

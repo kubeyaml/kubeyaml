@@ -1,0 +1,30 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    ingress.kubernetes.io/proxy-body-size: "0"
+    ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  labels:
+    app: harbor
+    chart: harbor
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-harbor-ingress-notary
+spec:
+  rules:
+  - host: notary.harbor.domain
+    http:
+      paths:
+      - backend:
+          service:
+            name: RELEASE-NAME-harbor-notary-server
+            port:
+              number: 4443
+        path: /
+        pathType: Prefix
+  tls:
+  - hosts:
+    - notary.harbor.domain
+    secretName: RELEASE-NAME-harbor-ingress

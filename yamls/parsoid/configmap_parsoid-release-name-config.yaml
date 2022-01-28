@@ -1,0 +1,55 @@
+apiVersion: v1
+data:
+  config.yaml: "# - `npm start -- -h` for more information about passing config files
+    via\n#   the commandline.\n# - lib/config/ParsoidConfig.js for all the properties
+    that you can configure\n#   here. Not all properties are documented here.\n\n#
+    The number of http workers (as opposed to `cpu_workers` below)\nnum_workers: 1\n\nworker_heartbeat_timeout:
+    300000\n\nlogging:\n  level: info\nmetrics:\n  type: log\nservices:\n  - module:
+    lib/index.js\n    entrypoint: apiServiceWorker\n    conf:\n        # For backwards
+    compatibility, and to continue to support non-static\n        # configs for the
+    time being, optionally provide a path to a\n        # localsettings.js file.  See
+    localsettings.example.js\n        \n\n        # Set your own user-agent string\n
+    \       # Otherwise, defaults to:\n        #   'Parsoid/<current-version-defined-in-package.json>'\n
+    \       \n\n        # Configure Parsoid to point to your MediaWiki instances.\n
+    \       mwApis:\n        - # This is the only required parameter,\n          #
+    the URL of you MediaWiki API endpoint.\n          uri: 'mediawiki-dev-RELEASE-NAME/api.php'\n\n
+    \         # The \"domain\" is used for communication with Visual Editor\n          #
+    and RESTBase.  It defaults to the hostname portion of\n          # the `uri` property
+    above, but you can manually set it\n          # to an arbitrary string. It must
+    match the \"domain\" set\n          # in $wgVirtualRestConfig.\n          domain:
+    'RELEASE-NAME'  # optional\n\n          \n\n          # To specify a proxy (or
+    proxy headers) specific to this prefix\n          # (which overrides defaultAPIProxyURI).
+    Alternatively, set `proxy`\n          # to `null` to override and force no proxying
+    when a default proxy\n          # has been set.\n          #proxy:\n          #
+    \   uri: 'http://my.proxy:1234/'\n          #    headers:  # optional\n          #
+    \       'X-Forwarded-Proto': 'https'\n          \n\n          # See below, defaults
+    to true.\n          strictSSL: true\n\n\n\n        # Enable using compute workers
+    to parse requests.\n        \n\n        # The number of workers in the pool spawned
+    by each http worker to\n        # call out for parsing.  Defaults to:\n        #
+    \  ceil(number of cpus / `num_workers`) + 1\n        cpu_workers: 1\n\n        #
+    We pre-define wikipedias as 'enwiki', 'dewiki' etc. Similarly\n        # for other
+    projects: 'enwiktionary', 'enwikiquote', 'enwikibooks',\n        # 'enwikivoyage'
+    etc.\n        # The default for this is false. Set to true if you want to load\n
+    \       # WMF's config for wikipedias, etc.\n        \n\n        # A default proxy
+    to connect to the API endpoints.\n        # Default: undefined (no proxying).\n
+    \       # Overridden by per-wiki proxy config in setMwApi.\n        \n\n        #
+    Enable debug mode (prints extra debugging messages)\n        \n\n        # Use
+    the PHP preprocessor to expand templates via the MW API (default true)\n        usePHPPreprocessor:
+    true\n\n        # Use selective serialization (default false)\n        \n\n        #
+    Allow cross-domain requests to the API (default '*')\n        # Sets Access-Control-Allow-Origin
+    header\n        \n\n        \n\n        # Allow override of port/interface:\n
+    \       \n\n        \n\n        # Enable linting of some wikitext errors to the
+    log\n        \n\n        \n\n        # Require SSL certificates to be valid (default
+    true)\n        # Set to false when using self-signed SSL certificates\n        #
+    Note that this can also be applied per wiki in the mwApis above\n        strictSSL:
+    true\n\n        # Use a different server for CSS style modules.\n        # Leaving
+    it undefined (the default) will use the same URI as the MW API,\n        # changing
+    api.php for load.php."
+kind: ConfigMap
+metadata:
+  labels:
+    app: parsoid
+    chart: parsoid-0.1.1
+    heritage: Helm
+    release: RELEASE-NAME
+  name: parsoid-RELEASE-NAME-config

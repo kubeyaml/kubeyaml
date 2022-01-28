@@ -1,0 +1,54 @@
+apiVersion: v1
+data:
+  config.yml.tpl: |
+    # GitLab user. git by default
+    user: git
+
+    # Url to gitlab instance. Used for api calls. Should end with a slash.
+    gitlab_url: "http://RELEASE-NAME-webservice-default.default.svc:8181/"
+
+    secret_file: /etc/gitlab-secrets/shell/.gitlab_shell_secret
+
+    http_settings:
+      self_signed_cert: false
+
+    # File used as authorized_keys for gitlab user
+    auth_file: "/home/git/.ssh/authorized_keys"
+
+    # Log file.
+    # Default is gitlab-shell.log in the root directory.
+    log_file: "/var/log/gitlab-shell/gitlab-shell.log"
+
+    log_format: text
+
+    # Audit usernames.
+    # Set to true to see real usernames in the logs instead of key ids, which is easier to follow, but
+    # incurs an extra API call on every gitlab-shell command.
+    audit_usernames: false
+  configure: |
+    set -e
+    config_dir="/init-config"
+    secret_dir="/init-secrets"
+
+    for secret in shell ; do
+      mkdir -p "${secret_dir}/${secret}"
+      cp -v -r -L "${config_dir}/${secret}/." "${secret_dir}/${secret}/"
+    done
+    for secret in redis minio objectstorage postgres ldap omniauth smtp kas pages oauth-secrets ; do
+      if [ -e "${config_dir}/${secret}" ]; then
+        mkdir -p "${secret_dir}/${secret}"
+        cp -v -r -L "${config_dir}/${secret}/." "${secret_dir}/${secret}/"
+      fi
+    done
+    mkdir -p /${secret_dir}/ssh
+    cp -v -r -L /${config_dir}/ssh_host_* /${secret_dir}/ssh/
+    chmod 0400 /${secret_dir}/ssh/ssh_host_*
+kind: ConfigMap
+metadata:
+  labels:
+    app: gitlab-shell
+    chart: gitlab-shell-5.7.0
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-gitlab-shell
+  namespace: default

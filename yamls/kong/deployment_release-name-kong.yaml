@@ -1,0 +1,178 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/component: server
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: kong
+    helm.sh/chart: kong-5.0.4
+  name: RELEASE-NAME-kong
+  namespace: default
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: server
+      app.kubernetes.io/instance: RELEASE-NAME
+      app.kubernetes.io/name: kong
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        checksum/configmap-kong: 90e4f62321c22ed89b3eef6951b57089ce6dd99bec9dea467687435f831e574b
+      labels:
+        app.kubernetes.io/component: server
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: kong
+        helm.sh/chart: kong-5.0.4
+    spec:
+      affinity:
+        nodeAffinity: null
+        podAffinity: null
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/component: server
+                  app.kubernetes.io/instance: RELEASE-NAME
+                  app.kubernetes.io/name: kong
+              namespaces:
+              - default
+              topologyKey: kubernetes.io/hostname
+            weight: 1
+      containers:
+      - env:
+        - name: BITNAMI_DEBUG
+          value: "false"
+        - name: KONG_DATABASE
+          value: postgres
+        - name: KONG_PG_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: postgresql-password
+              name: RELEASE-NAME-postgresql
+        - name: KONG_PG_HOST
+          value: RELEASE-NAME-postgresql
+        - name: KONG_PG_USER
+          value: kong
+        image: docker.io/bitnami/kong:2.7.1-debian-10-r0
+        imagePullPolicy: IfNotPresent
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - /bin/sh
+              - -c
+              - kong quit
+        livenessProbe:
+          exec:
+            command:
+            - /bin/bash
+            - -ec
+            - /health/kong-container-health.sh
+          failureThreshold: 6
+          initialDelaySeconds: 120
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        name: kong
+        ports:
+        - containerPort: 8000
+          name: http-proxy
+          protocol: TCP
+        - containerPort: 8443
+          name: https-proxy
+          protocol: TCP
+        - containerPort: 8001
+          name: http-admin
+          protocol: TCP
+        - containerPort: 8444
+          name: https-admin
+          protocol: TCP
+        readinessProbe:
+          exec:
+            command:
+            - /bin/bash
+            - -ec
+            - /health/kong-container-health.sh
+          failureThreshold: 6
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        resources:
+          limits: {}
+          requests: {}
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+        volumeMounts:
+        - mountPath: /health
+          name: health
+      - command:
+        - bash
+        - -ec
+        - /health/ingress-container-start.sh
+        env:
+        - name: CONTROLLER_KONG_ADMIN_URL
+          value: http://127.0.0.1:8001
+        - name: CONTROLLER_PUBLISH_SERVICE
+          value: default/RELEASE-NAME-kong
+        - name: CONTROLLER_INGRESS_CLASS
+          value: kong
+        - name: CONTROLLER_ELECTION_ID
+          value: kong-ingress-controller-leader-kong
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        image: docker.io/bitnami/kong-ingress-controller:2.1.1-debian-10-r17
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 6
+          httpGet:
+            path: /healthz
+            port: http-health
+            scheme: HTTP
+          initialDelaySeconds: 120
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        name: kong-ingress-controller
+        ports:
+        - containerPort: 10254
+          name: http-health
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 6
+          httpGet:
+            path: /healthz
+            port: http-health
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        resources:
+          limits: {}
+          requests: {}
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+        volumeMounts:
+        - mountPath: /health
+          name: health
+      serviceAccountName: RELEASE-NAME-kong
+      volumes:
+      - configMap:
+          defaultMode: 493
+          name: RELEASE-NAME-kong-scripts
+        name: health

@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    helm.sh/hook: test-success
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: mattermost-team-edition
+    helm.sh/chart: mattermost-team-edition-6.3.0
+  name: RELEASE-NAME-mattermost-team-edition-test-vku1j
+spec:
+  containers:
+  - command:
+    - /opt/bats/bin/bats
+    - -t
+    - /tests/run.sh
+    image: bats/bats:v1.1.0
+    name: RELEASE-NAME-test
+    volumeMounts:
+    - mountPath: /tests
+      name: tests
+      readOnly: true
+    - mountPath: /tools
+      name: tools
+  restartPolicy: Never
+  volumes:
+  - configMap:
+      name: RELEASE-NAME-mattermost-team-edition-tests
+    name: tests
+  - emptyDir: {}
+    name: tools

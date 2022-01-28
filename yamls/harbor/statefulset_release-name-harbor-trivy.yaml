@@ -1,0 +1,136 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: harbor
+    chart: harbor
+    component: trivy
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-harbor-trivy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: harbor
+      component: trivy
+      release: RELEASE-NAME
+  serviceName: RELEASE-NAME-harbor-trivy
+  template:
+    metadata:
+      annotations:
+        checksum/secret: 7e11ee3d2d80064b31efb1cf7ec39ef9b22d0a8eee92b100ec6eaab3e2c03b91
+      labels:
+        app: harbor
+        chart: harbor
+        component: trivy
+        heritage: Helm
+        release: RELEASE-NAME
+    spec:
+      automountServiceAccountToken: false
+      containers:
+      - env:
+        - name: HTTP_PROXY
+          value: ""
+        - name: HTTPS_PROXY
+          value: ""
+        - name: NO_PROXY
+          value: RELEASE-NAME-harbor-core,RELEASE-NAME-harbor-jobservice,RELEASE-NAME-harbor-database,RELEASE-NAME-harbor-chartmuseum,RELEASE-NAME-harbor-notary-server,RELEASE-NAME-harbor-notary-signer,RELEASE-NAME-harbor-registry,RELEASE-NAME-harbor-portal,RELEASE-NAME-harbor-trivy,RELEASE-NAME-harbor-exporter,127.0.0.1,localhost,.local,.internal
+        - name: SCANNER_LOG_LEVEL
+          value: info
+        - name: SCANNER_TRIVY_CACHE_DIR
+          value: /home/scanner/.cache/trivy
+        - name: SCANNER_TRIVY_REPORTS_DIR
+          value: /home/scanner/.cache/reports
+        - name: SCANNER_TRIVY_DEBUG_MODE
+          value: "false"
+        - name: SCANNER_TRIVY_VULN_TYPE
+          value: os,library
+        - name: SCANNER_TRIVY_TIMEOUT
+          value: 5m0s
+        - name: SCANNER_TRIVY_GITHUB_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: gitHubToken
+              name: RELEASE-NAME-harbor-trivy
+        - name: SCANNER_TRIVY_SEVERITY
+          value: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+        - name: SCANNER_TRIVY_IGNORE_UNFIXED
+          value: "false"
+        - name: SCANNER_TRIVY_SKIP_UPDATE
+          value: "false"
+        - name: SCANNER_TRIVY_INSECURE
+          value: "false"
+        - name: SCANNER_API_SERVER_ADDR
+          value: :8080
+        - name: SCANNER_REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              key: redisURL
+              name: RELEASE-NAME-harbor-trivy
+        - name: SCANNER_STORE_REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              key: redisURL
+              name: RELEASE-NAME-harbor-trivy
+        - name: SCANNER_JOB_QUEUE_REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              key: redisURL
+              name: RELEASE-NAME-harbor-trivy
+        image: goharbor/trivy-adapter-photon:v2.4.1
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 10
+          httpGet:
+            path: /probe/healthy
+            port: api-server
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+        name: trivy
+        ports:
+        - containerPort: 8080
+          name: api-server
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /probe/ready
+            port: api-server
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+        resources:
+          limits:
+            cpu: 1
+            memory: 1Gi
+          requests:
+            cpu: 200m
+            memory: 512Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          privileged: false
+        volumeMounts:
+        - mountPath: /home/scanner/.cache
+          name: data
+          readOnly: false
+          subPath: null
+      securityContext:
+        fsGroup: 10000
+        runAsUser: 10000
+  volumeClaimTemplates:
+  - metadata:
+      labels:
+        app: harbor
+        chart: harbor
+        heritage: Helm
+        release: RELEASE-NAME
+      name: data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 5Gi

@@ -1,3 +1,0 @@
-helmCharts:
-- name: mysql
-  repo: https://charts.bitnami.com/bitnami

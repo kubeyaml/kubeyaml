@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/instance: RELEASE-NAME
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: redis
-    helm.sh/chart: redis-16.2.0
+    helm.sh/chart: redis-16.2.1
   name: RELEASE-NAME-redis-master
   namespace: default
 spec:
@@ -20,16 +20,16 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/configmap: d6b92d1aa28a507529407ca520a009f028f59efec40604409900f76d2133e283
-        checksum/health: cb25fe6bc0999e9b514e7f2c0d8bce9ae8fee60f3f92324e750582330893f49e
-        checksum/scripts: 5e5bfdaeda2a31bf9f1352e680d0bedf59d4c1ebb02ee8d7c467591b997b56e2
-        checksum/secret: 741f551e4e082d89a3bfc1ec6415cd2a46f3fb8aa5bf6f8abdb1a3fd3a60ed53
+        checksum/configmap: 031050107c11a027ceadf8099a716c49e54e42472e7939af57cf18f7ec77bbac
+        checksum/health: 9ba88ddf3def643186e9860cb77f4bf81b21545d65bb75d1826310eb06364ac5
+        checksum/scripts: 15dfa25e7507f6aa4df9d9b11756bc71e8916eedb092cc594d77eb2fc2f342a3
+        checksum/secret: 92ae7327105396e6afc1b0d0f241fd4a1e6fe0efd3a03051b97ec99b0b7a08b0
       labels:
         app.kubernetes.io/component: master
         app.kubernetes.io/instance: RELEASE-NAME
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: redis
-        helm.sh/chart: redis-16.2.0
+        helm.sh/chart: redis-16.2.1
     spec:
       affinity:
         nodeAffinity: null

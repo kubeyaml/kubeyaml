@@ -1,0 +1,131 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: data
+    app.kubernetes.io/component: data
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: elasticsearch
+    helm.sh/chart: elasticsearch-17.7.1
+  name: RELEASE-NAME-elasticsearch-data
+spec:
+  podManagementPolicy: Parallel
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: data
+      app.kubernetes.io/instance: RELEASE-NAME
+      app.kubernetes.io/name: elasticsearch
+  serviceName: RELEASE-NAME-elasticsearch-data
+  template:
+    metadata:
+      annotations: null
+      labels:
+        app: data
+        app.kubernetes.io/component: data
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: elasticsearch
+        helm.sh/chart: elasticsearch-17.7.1
+    spec:
+      affinity:
+        nodeAffinity: null
+        podAffinity: null
+        podAntiAffinity: null
+      containers:
+      - env:
+        - name: MY_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: BITNAMI_DEBUG
+          value: "false"
+        - name: ELASTICSEARCH_CLUSTER_NAME
+          value: elastic
+        - name: ELASTICSEARCH_CLUSTER_HOSTS
+          value: RELEASE-NAME-elasticsearch-master.default.svc.cluster.local,RELEASE-NAME-elasticsearch-coordinating-only.default.svc.cluster.local,RELEASE-NAME-elasticsearch-data.default.svc.cluster.local,
+        - name: ELASTICSEARCH_TOTAL_NODES
+          value: "2"
+        - name: ELASTICSEARCH_HEAP_SIZE
+          value: 1024m
+        - name: ELASTICSEARCH_IS_DEDICATED_NODE
+          value: "yes"
+        - name: ELASTICSEARCH_NODE_TYPE
+          value: data
+        - name: ELASTICSEARCH_ADVERTISED_HOSTNAME
+          value: $(MY_POD_NAME).RELEASE-NAME-elasticsearch-data.default.svc.cluster.local
+        image: docker.io/bitnami/elasticsearch:7.16.3-debian-10-r0
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          exec:
+            command:
+            - /opt/bitnami/scripts/elasticsearch/healthcheck.sh
+          failureThreshold: 5
+          initialDelaySeconds: 90
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        name: elasticsearch
+        ports:
+        - containerPort: 9200
+          name: http
+        - containerPort: 9300
+          name: transport
+        readinessProbe:
+          exec:
+            command:
+            - /opt/bitnami/scripts/elasticsearch/healthcheck.sh
+          failureThreshold: 5
+          initialDelaySeconds: 90
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        resources:
+          limits: {}
+          requests:
+            cpu: 25m
+            memory: 2048Mi
+        securityContext:
+          runAsUser: 1001
+        volumeMounts:
+        - mountPath: /bitnami/elasticsearch/data
+          name: data
+      initContainers:
+      - command:
+        - /bin/bash
+        - -ec
+        - |
+          CURRENT=`sysctl -n vm.max_map_count`;
+          DESIRED="262144";
+          if [ "$DESIRED" -gt "$CURRENT" ]; then
+              sysctl -w vm.max_map_count=262144;
+          fi;
+          CURRENT=`sysctl -n fs.file-max`;
+          DESIRED="65536";
+          if [ "$DESIRED" -gt "$CURRENT" ]; then
+              sysctl -w fs.file-max=65536;
+          fi;
+        image: docker.io/bitnami/bitnami-shell:10-debian-10-r312
+        imagePullPolicy: IfNotPresent
+        name: sysctl
+        resources:
+          limits: {}
+          requests: {}
+        securityContext:
+          privileged: true
+      securityContext:
+        fsGroup: 1001
+      serviceAccountName: default
+      volumes: null
+  updateStrategy:
+    type: RollingUpdate
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 8Gi

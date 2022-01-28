@@ -1,0 +1,47 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-delete-policy: hook-succeeded,before-hook-creation
+  labels:
+    app: minio-make-user-job
+    chart: minio-3.4.7
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-minio-make-user-job
+  namespace: default
+spec:
+  template:
+    metadata:
+      labels:
+        app: minio-job
+        release: RELEASE-NAME
+    spec:
+      containers:
+      - command:
+        - /bin/sh
+        - /config/add-user
+        env:
+        - name: MINIO_ENDPOINT
+          value: RELEASE-NAME-minio
+        - name: MINIO_PORT
+          value: "9000"
+        image: quay.io/minio/mc:RELEASE.2021-12-29T06-52-55Z
+        imagePullPolicy: IfNotPresent
+        name: minio-mc
+        resources:
+          requests:
+            memory: 128Mi
+        volumeMounts:
+        - mountPath: /config
+          name: minio-configuration
+      restartPolicy: OnFailure
+      volumes:
+      - name: minio-configuration
+        projected:
+          sources:
+          - configMap:
+              name: RELEASE-NAME-minio
+          - secret:
+              name: RELEASE-NAME-minio

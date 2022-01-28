@@ -1,0 +1,105 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: RELEASE-NAME-nuclio-dashboard
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nuclio
+      nuclio.io/app: dashboard
+      nuclio.io/class: service
+      nuclio.io/name: RELEASE-NAME-nuclio-dashboard
+      release: RELEASE-NAME
+  template:
+    metadata:
+      annotations:
+        checksum/configmap-platform: c4e5012d9b1ac4436c97c23d57f47be5f4febc5de8cfefdfa05ed847a48a0f81
+        checksum/configmap-registry-url: c4e5012d9b1ac4436c97c23d57f47be5f4febc5de8cfefdfa05ed847a48a0f81
+        checksum/secret-registry-credentials: c4e5012d9b1ac4436c97c23d57f47be5f4febc5de8cfefdfa05ed847a48a0f81
+        nuclio.io/version: 1.7.6-amd64
+      labels:
+        app: nuclio
+        nuclio.io/app: dashboard
+        nuclio.io/class: service
+        nuclio.io/name: RELEASE-NAME-nuclio-dashboard
+        release: RELEASE-NAME
+    spec:
+      containers:
+      - env:
+        - name: NUCLIO_KANIKO_PUSH_IMAGES_RETRIES
+          value: "3"
+        - name: NUCLIO_AUTH_KIND
+          value: nop
+        - name: NUCLIO_AUTH_OPTIONS_IGUAZIO_TIMEOUT
+          value: 30s
+        - name: NUCLIO_AUTH_IGUAZIO_VERIFICATION_URL
+          value: http://somewhere.com
+        - name: NUCLIO_AUTH_IGUAZIO_CACHE_SIZE
+          value: "100"
+        - name: NUCLIO_AUTH_IGUAZIO_CACHE_EXPIRATION_TIMEOUT
+          value: 60s
+        - name: NUCLIO_DASHBOARD_REGISTRY_URL
+          valueFrom:
+            configMapKeyRef:
+              key: registry_url
+              name: RELEASE-NAME-nuclio-registry-url
+              optional: true
+        - name: NUCLIO_DASHBOARD_DEPLOYMENT_NAME
+          value: RELEASE-NAME-nuclio-dashboard
+        - name: NUCLIO_CONTAINER_BUILDER_KIND
+          value: docker
+        - name: NUCLIO_KANIKO_CONTAINER_IMAGE
+          value: gcr.io/kaniko-project/executor:v1.7.0
+        - name: NUCLIO_KANIKO_CONTAINER_IMAGE_PULL_POLICY
+          value: IfNotPresent
+        - name: NUCLIO_KANIKO_JOB_DELETION_TIMEOUT
+          value: 30m
+        - name: NUCLIO_DASHBOARD_DEFAULT_ONBUILD_REGISTRY_URL
+          value: quay.io
+        - name: NUCLIO_MONITOR_DOCKER_DAEMON
+          value: "true"
+        - name: NUCLIO_MONITOR_DOCKER_DAEMON_INTERVAL
+          value: 5s
+        - name: NUCLIO_MONITOR_DOCKER_DAEMON_MAX_CONSECUTIVE_ERRORS
+          value: "5"
+        - name: NUCLIO_REGISTRY_CREDENTIALS_SECRET_NAME
+          value: null
+        - name: NUCLIO_DASHBOARD_EXTERNAL_IP_ADDRESSES
+          value: ""
+        - name: NUCLIO_DASHBOARD_IMAGE_NAME_PREFIX_TEMPLATE
+          value: ""
+        image: quay.io/nuclio/dashboard:1.7.6-amd64
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 1
+          httpGet:
+            path: /live
+            port: liveness-port
+          periodSeconds: 15
+          timeoutSeconds: 5
+        name: RELEASE-NAME-nuclio-dashboard
+        ports:
+        - containerPort: 8070
+        - containerPort: 8082
+          name: liveness-port
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: liveness-port
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        startupProbe:
+          failureThreshold: 4
+          httpGet:
+            path: /live
+            port: liveness-port
+          periodSeconds: 15
+        volumeMounts:
+        - mountPath: /var/run/docker.sock
+          name: docker-sock
+      serviceAccountName: RELEASE-NAME-nuclio
+      volumes:
+      - hostPath:
+          path: /var/run/docker.sock
+        name: docker-sock

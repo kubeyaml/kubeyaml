@@ -1,0 +1,16 @@
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  labels:
+    app: registry
+    chart: registry-0.7.0
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-registry-v1
+  namespace: default
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: registry
+      release: RELEASE-NAME

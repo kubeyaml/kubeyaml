@@ -1,0 +1,46 @@
+apiVersion: v1
+data:
+  cable.yml.erb: "production:\n  url: redis://:<%= ERB::Util::url_encode(File.read(\"/etc/gitlab/redis/redis-password\").strip)
+    %>@RELEASE-NAME-redis-master.default.svc:6379\n  \n  id:\n  adapter: redis\n"
+  configure: |
+    set -e
+    config_dir="/init-config"
+    secret_dir="/init-secrets"
+
+    for secret in rails-secrets migrations gitaly ; do
+      mkdir -p "${secret_dir}/${secret}"
+      cp -v -r -L "${config_dir}/${secret}/." "${secret_dir}/${secret}/"
+    done
+    for secret in redis minio objectstorage postgres ldap omniauth smtp kas pages oauth-secrets ; do
+      if [ -e "${config_dir}/${secret}" ]; then
+        mkdir -p "${secret_dir}/${secret}"
+        cp -v -r -L "${config_dir}/${secret}/." "${secret_dir}/${secret}/"
+      fi
+    done
+  database.yml.erb: "\nproduction:\n  main:\n    adapter: postgresql\n    encoding:
+    unicode\n    database: gitlabhq_production\n    username: gitlab\n    password:
+    <%= File.read('/etc/gitlab/postgres/psql-password-main').strip.to_json %>\n    host:
+    \"RELEASE-NAME-postgresql.default.svc\"\n    port: 5432\n    connect_timeout:
+    \n    keepalives: \n    keepalives_idle: \n    keepalives_interval: \n    keepalives_count:
+    \n    tcp_user_timeout: \n    application_name: \n    prepared_statements: false\n
+    \   \n    \n"
+  gitlab.yml.erb: "production: &base\n  gitlab:\n    host: gitlab.example.com\n  gitaly:\n
+    \   client_path: /home/git/gitaly/bin\n    token: <%= File.read('/etc/gitlab/gitaly/gitaly_token').strip.to_json
+    %>\n  repositories:\n    storages: # You must have at least a `default` storage
+    path.\n      default:\n        path: /var/opt/gitlab/repo\n        gitaly_address:
+    tcp://RELEASE-NAME-gitaly-0.RELEASE-NAME-gitaly.default.svc:8075\n      \n  \n
+    \ sidekiq:\n  \n"
+  installation_type: |
+    gitlab-helm-chart
+  pages_redirect_uri: https://projects.pages.example.com/auth
+  resque.yml.erb: "production:\n  url: redis://:<%= ERB::Util::url_encode(File.read(\"/etc/gitlab/redis/redis-password\").strip)
+    %>@RELEASE-NAME-redis-master.default.svc:6379\n  \n  id:\n"
+kind: ConfigMap
+metadata:
+  labels:
+    app: migrations
+    chart: migrations-5.7.0
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-migrations
+  namespace: default

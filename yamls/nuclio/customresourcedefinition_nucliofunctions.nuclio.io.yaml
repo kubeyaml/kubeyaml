@@ -1,0 +1,26 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  labels:
+    app: nuclio
+    release: RELEASE-NAME
+  name: nucliofunctions.nuclio.io
+spec:
+  group: nuclio.io
+  names:
+    kind: NuclioFunction
+    plural: nucliofunctions
+    singular: nucliofunction
+  scope: Namespaced
+  versions:
+  - name: v1beta1
+    schema:
+      openAPIV3Schema:
+        properties:
+          spec:
+            x-kubernetes-preserve-unknown-fields: true
+          status:
+            x-kubernetes-preserve-unknown-fields: true
+        type: object
+    served: true
+    storage: true

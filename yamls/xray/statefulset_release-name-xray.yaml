@@ -1,0 +1,465 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: xray
+    chart: xray-103.41.4
+    component: xray
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-xray
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: xray
+      component: xray
+      release: RELEASE-NAME
+  serviceName: RELEASE-NAME-xray
+  template:
+    metadata:
+      annotations:
+        checksum/database-secrets: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+        checksum/systemyaml: 35f905a45bbebcbecb10268a4a7b6e599d126eab153bf9cb0369c20a20abcdc9
+      labels:
+        app: xray
+        component: xray
+        release: RELEASE-NAME
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: xray
+                  release: RELEASE-NAME
+              topologyKey: kubernetes.io/hostname
+            weight: 100
+      containers:
+      - command:
+        - /bin/sh
+        - -c
+        - |
+          exec /opt/jfrog/router/app/bin/entrypoint-router.sh;
+        env:
+        - name: JF_ROUTER_TOPOLOGY_LOCAL_REQUIREDSERVICETYPES
+          value: jfxr,jfxana,jfxidx,jfxpst,jfob
+        image: releases-docker.jfrog.io/jfrog/router:7.30.0
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - curl -k --fail --max-time 1 http://localhost:8082/router/api/v1/system/liveness
+          failureThreshold: 10
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: router
+        ports:
+        - containerPort: 8082
+          name: http-router
+        readinessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - curl -k --fail --max-time 1 http://localhost:8082/router/api/v1/system/readiness
+          failureThreshold: 10
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources: {}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - NET_RAW
+          runAsNonRoot: true
+          runAsUser: 1035
+        startupProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - curl -k --fail --max-time 1 http://localhost:8082/router/api/v1/system/readiness
+          failureThreshold: 60
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          timeoutSeconds: 1
+        volumeMounts:
+        - mountPath: /var/opt/jfrog/router
+          name: data-volume
+      - command:
+        - /bin/sh
+        - -c
+        - |
+          exec /opt/jfrog/observability/app/bin/entrypoint-observability.sh;
+        image: releases-docker.jfrog.io/jfrog/observability:1.2.2
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - curl --fail --max-time 1 http://localhost:8036/api/v1/system/liveness
+          failureThreshold: 10
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        name: observability
+        resources: {}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - NET_RAW
+          runAsNonRoot: true
+        startupProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - curl --fail --max-time 1 http://localhost:8036/api/v1/system/readiness
+          failureThreshold: 90
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          timeoutSeconds: 5
+        volumeMounts:
+        - mountPath: /var/opt/jfrog/observability
+          name: data-volume
+      - command:
+        - /bin/bash
+        - -c
+        - |
+          exec /opt/jfrog/xray/app/bin/wrapper.sh;
+        env:
+        - name: JF_SHARED_DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: postgresql-password
+              name: RELEASE-NAME-postgresql
+        - name: JF_SHARED_RABBITMQ_USERNAME
+          value: guest
+        - name: JF_SHARED_RABBITMQ_URL
+          value: amqp://RELEASE-NAME-rabbitmq:5672/
+        - name: JF_SHARED_RABBITMQ_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: rabbitmq-password
+              name: RELEASE-NAME-rabbitmq
+        image: releases-docker.jfrog.io/jfrog/xray-server:3.41.4
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - curl -k --fail --max-time 1 http://localhost:8000/api/v1/system/liveness
+          failureThreshold: 3
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: xray-server
+        ports:
+        - containerPort: 8000
+          name: http-server
+        resources: {}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - NET_RAW
+          runAsNonRoot: true
+          runAsUser: 1035
+        startupProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - curl -k --fail --max-time 1 http://localhost:8000/api/v1/system/readiness
+          failureThreshold: 60
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          timeoutSeconds: 1
+        volumeMounts:
+        - mountPath: /var/opt/jfrog/xray
+          name: data-volume
+      - command:
+        - /bin/bash
+        - -c
+        - |
+          exec /opt/jfrog/xray/app/bin/wrapper.sh;
+        env:
+        - name: JF_SHARED_DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: postgresql-password
+              name: RELEASE-NAME-postgresql
+        - name: JF_SHARED_RABBITMQ_USERNAME
+          value: guest
+        - name: JF_SHARED_RABBITMQ_URL
+          value: amqp://RELEASE-NAME-rabbitmq:5672/
+        - name: JF_SHARED_RABBITMQ_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: rabbitmq-password
+              name: RELEASE-NAME-rabbitmq
+        - name: XRAY_HA_NODE_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: XRAY_K8S_ENV
+          value: "true"
+        - name: EXECUTION_JOB_AES_KEY
+          valueFrom:
+            secretKeyRef:
+              key: execution-service-aes-key
+              name: RELEASE-NAME-xray
+        image: releases-docker.jfrog.io/jfrog/xray-analysis:3.41.4
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - curl -k --fail --max-time 1 http://localhost:7000/api/v1/system/liveness
+          failureThreshold: 3
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: xray-analysis
+        ports:
+        - containerPort: 7000
+          name: http-analysis
+        resources: {}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - NET_RAW
+          runAsNonRoot: true
+          runAsUser: 1035
+        startupProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - curl -k --fail --max-time 1 http://localhost:7000/api/v1/system/readiness
+          failureThreshold: 60
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          timeoutSeconds: 1
+        volumeMounts:
+        - mountPath: /var/opt/jfrog/xray
+          name: data-volume
+      - command:
+        - /bin/bash
+        - -c
+        - |
+          exec /opt/jfrog/xray/app/bin/wrapper.sh;
+        env:
+        - name: JF_SHARED_DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: postgresql-password
+              name: RELEASE-NAME-postgresql
+        - name: JF_SHARED_RABBITMQ_USERNAME
+          value: guest
+        - name: JF_SHARED_RABBITMQ_URL
+          value: amqp://RELEASE-NAME-rabbitmq:5672/
+        - name: JF_SHARED_RABBITMQ_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: rabbitmq-password
+              name: RELEASE-NAME-rabbitmq
+        - name: XRAY_HA_NODE_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: XRAY_K8S_ENV
+          value: "true"
+        image: releases-docker.jfrog.io/jfrog/xray-indexer:3.41.4
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - curl -k --fail --max-time 1 http://localhost:7002/api/v1/system/liveness
+          failureThreshold: 3
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: xray-indexer
+        ports:
+        - containerPort: 7002
+          name: http-indexer
+        resources: {}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - NET_RAW
+          runAsNonRoot: true
+          runAsUser: 1035
+        startupProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - curl -k --fail --max-time 1 http://localhost:7002/api/v1/system/readiness
+          failureThreshold: 60
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          timeoutSeconds: 1
+        volumeMounts:
+        - mountPath: /var/opt/jfrog/xray
+          name: data-volume
+      - command:
+        - /bin/bash
+        - -c
+        - |
+          exec /opt/jfrog/xray/app/bin/wrapper.sh;
+        env:
+        - name: JF_SHARED_DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: postgresql-password
+              name: RELEASE-NAME-postgresql
+        - name: JF_SHARED_RABBITMQ_USERNAME
+          value: guest
+        - name: JF_SHARED_RABBITMQ_URL
+          value: amqp://RELEASE-NAME-rabbitmq:5672/
+        - name: JF_SHARED_RABBITMQ_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: rabbitmq-password
+              name: RELEASE-NAME-rabbitmq
+        - name: XRAY_K8S_ENV
+          value: "true"
+        image: releases-docker.jfrog.io/jfrog/xray-persist:3.41.4
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - curl -k --fail --max-time 1 http://localhost:7003/api/v1/system/liveness
+          failureThreshold: 3
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: xray-persist
+        ports:
+        - containerPort: 7003
+          name: http-persist
+        resources: {}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - NET_RAW
+          runAsNonRoot: true
+          runAsUser: 1035
+        startupProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - curl -k --fail --max-time 1 http://localhost:7003/api/v1/system/readiness
+          failureThreshold: 60
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          timeoutSeconds: 1
+        volumeMounts:
+        - mountPath: /var/opt/jfrog/xray
+          name: data-volume
+      initContainers:
+      - command:
+        - bash
+        - -c
+        - |
+          if [[ -e "/var/opt/jfrog/xray/etc/filebeat.yaml" ]]; then chmod 644 /var/opt/jfrog/xray/etc/filebeat.yaml; fi; echo "Copy system.yaml to /var/opt/jfrog/xray/etc"; mkdir -p /var/opt/jfrog/xray/etc; cp -fv /tmp/etc/system.yaml /var/opt/jfrog/xray/etc/system.yaml; echo "Remove /var/opt/jfrog/xray/lost+found folder if exists"; rm -rfv /var/opt/jfrog/xray/lost+found; echo "Copy joinKey to /var/opt/jfrog/xray/etc/security"; mkdir -p /var/opt/jfrog/xray/etc/security; echo ${XRAY_JOIN_KEY} > /var/opt/jfrog/xray/etc/security/join.key; echo "Copy masterKey to /var/opt/jfrog/xray/etc/security"; mkdir -p /var/opt/jfrog/xray/etc/security; echo ${XRAY_MASTER_KEY} > /var/opt/jfrog/xray/etc/security/master.key;
+        env:
+        - name: XRAY_JOIN_KEY
+          valueFrom:
+            secretKeyRef:
+              key: join-key
+              name: RELEASE-NAME-xray
+        - name: XRAY_MASTER_KEY
+          valueFrom:
+            secretKeyRef:
+              key: master-key
+              name: RELEASE-NAME-xray
+        image: releases-docker.jfrog.io/jfrog/ubi-minimal:8.5-204
+        name: copy-system-yaml
+        resources:
+          limits:
+            cpu: "1"
+            memory: 1Gi
+          requests:
+            cpu: 10m
+            memory: 50Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - NET_RAW
+          runAsNonRoot: true
+        volumeMounts:
+        - mountPath: /var/opt/jfrog/xray
+          name: data-volume
+        - mountPath: /tmp/etc/system.yaml
+          name: systemyaml
+          subPath: system.yaml
+      - command:
+        - bash
+        - -c
+        - "echo \"Waiting for postgresql to come up\"\nready=false;\nwhile ! $ready;
+          do echo waiting;\n  timeout 2s bash -c \"</dev/tcp/RELEASE-NAME-postgresql/5432\";
+          exit_status=$?;\n  if [[ $exit_status -eq 0 ]]; then ready=true; echo \"database
+          ok\"; fi; sleep 1; \ndone\n"
+        image: releases-docker.jfrog.io/jfrog/ubi-minimal:8.5-204
+        name: wait-for-db
+        resources:
+          limits:
+            cpu: "1"
+            memory: 1Gi
+          requests:
+            cpu: 10m
+            memory: 50Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - NET_RAW
+          runAsNonRoot: true
+      securityContext:
+        fsGroup: 1035
+        runAsUser: 1035
+      serviceAccountName: default
+      volumes:
+      - name: systemyaml
+        secret:
+          secretName: RELEASE-NAME-xray-system-yaml
+  updateStrategy:
+    type: RollingUpdate
+  volumeClaimTemplates:
+  - metadata:
+      name: data-volume
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 50Gi

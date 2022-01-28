@@ -1,0 +1,130 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: moodle
+    helm.sh/chart: moodle-12.0.3
+  name: RELEASE-NAME-moodle
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: RELEASE-NAME
+      app.kubernetes.io/name: moodle
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        prometheus.io/port: "9117"
+        prometheus.io/scrape: "true"
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: moodle
+        helm.sh/chart: moodle-12.0.3
+    spec:
+      affinity:
+        nodeAffinity: null
+        podAffinity: null
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: RELEASE-NAME
+                  app.kubernetes.io/name: moodle
+              namespaces:
+              - default
+              topologyKey: kubernetes.io/hostname
+            weight: 1
+      containers:
+      - env:
+        - name: BITNAMI_DEBUG
+          value: "false"
+        - name: ALLOW_EMPTY_PASSWORD
+          value: "yes"
+        - name: APACHE_HTTP_PORT_NUMBER
+          value: "8080"
+        - name: APACHE_HTTPS_PORT_NUMBER
+          value: "8443"
+        - name: MOODLE_DATABASE_HOST
+          value: RELEASE-NAME-mariadb
+        - name: MOODLE_DATABASE_PORT_NUMBER
+          value: "3306"
+        - name: MOODLE_DATABASE_NAME
+          value: bitnami_moodle
+        - name: MOODLE_DATABASE_USER
+          value: bn_moodle
+        - name: MOODLE_DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: mariadb-password
+              name: RELEASE-NAME-mariadb
+        - name: MOODLE_SKIP_BOOTSTRAP
+          value: "no"
+        - name: MOODLE_USERNAME
+          value: user
+        - name: MOODLE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: moodle-password
+              name: RELEASE-NAME-moodle
+        - name: MOODLE_EMAIL
+          value: user@example.com
+        envFrom: null
+        image: docker.io/bitnami/moodle:3.11.5-debian-10-r10
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 6
+          httpGet:
+            path: /login/index.php
+            port: http
+          initialDelaySeconds: 600
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        name: RELEASE-NAME-moodle
+        ports:
+        - containerPort: 8080
+          name: http
+        - containerPort: 8443
+          name: https
+        readinessProbe:
+          failureThreshold: 6
+          httpGet:
+            path: /login/index.php
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          successThreshold: 1
+          timeoutSeconds: 3
+        resources:
+          limits: {}
+          requests:
+            cpu: 300m
+            memory: 512Mi
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+        volumeMounts:
+        - mountPath: /bitnami/moodle
+          name: moodle-data
+          subPath: moodle
+        - mountPath: /bitnami/moodledata
+          name: moodle-data
+          subPath: moodledata
+      hostAliases:
+      - hostnames:
+        - status.localhost
+        ip: 127.0.0.1
+      initContainers: null
+      priorityClassName: ""
+      securityContext:
+        fsGroup: 1001
+      volumes:
+      - name: moodle-data
+        persistentVolumeClaim:
+          claimName: RELEASE-NAME-moodle-moodle

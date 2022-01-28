@@ -1,0 +1,108 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: harbor
+    chart: harbor
+    component: database
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-harbor-database
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: harbor
+      component: database
+      release: RELEASE-NAME
+  serviceName: RELEASE-NAME-harbor-database
+  template:
+    metadata:
+      annotations:
+        checksum/secret: 90e0d57ebc6da6126ee1a270482b27747d8dede1c6ae5c371fafa2157b82cb87
+      labels:
+        app: harbor
+        chart: harbor
+        component: database
+        heritage: Helm
+        release: RELEASE-NAME
+    spec:
+      automountServiceAccountToken: false
+      containers:
+      - env:
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        envFrom:
+        - secretRef:
+            name: RELEASE-NAME-harbor-database
+        image: goharbor/harbor-db:v2.4.1
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          exec:
+            command:
+            - /docker-healthcheck.sh
+          initialDelaySeconds: 300
+          periodSeconds: 10
+        name: database
+        readinessProbe:
+          exec:
+            command:
+            - /docker-healthcheck.sh
+          initialDelaySeconds: 1
+          periodSeconds: 10
+        volumeMounts:
+        - mountPath: /var/lib/postgresql/data
+          name: database-data
+          subPath: null
+        - mountPath: /dev/shm
+          name: shm-volume
+      initContainers:
+      - args:
+        - -c
+        - '[ -e /var/lib/postgresql/data/postgresql.conf ] && [ ! -d /var/lib/postgresql/data/pgdata
+          ] && mkdir -m 0700 /var/lib/postgresql/data/pgdata && mv /var/lib/postgresql/data/*
+          /var/lib/postgresql/data/pgdata/ || true'
+        command:
+        - /bin/sh
+        image: goharbor/harbor-db:v2.4.1
+        imagePullPolicy: IfNotPresent
+        name: data-migrator
+        volumeMounts:
+        - mountPath: /var/lib/postgresql/data
+          name: database-data
+          subPath: null
+      - args:
+        - -c
+        - chmod -R 700 /var/lib/postgresql/data/pgdata || true
+        command:
+        - /bin/sh
+        image: goharbor/harbor-db:v2.4.1
+        imagePullPolicy: IfNotPresent
+        name: data-permissions-ensurer
+        volumeMounts:
+        - mountPath: /var/lib/postgresql/data
+          name: database-data
+          subPath: null
+      securityContext:
+        fsGroup: 999
+        runAsUser: 999
+      terminationGracePeriodSeconds: 120
+      volumes:
+      - emptyDir:
+          medium: Memory
+          sizeLimit: 512Mi
+        name: shm-volume
+  volumeClaimTemplates:
+  - metadata:
+      labels:
+        app: harbor
+        chart: harbor
+        heritage: Helm
+        release: RELEASE-NAME
+      name: database-data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 1Gi

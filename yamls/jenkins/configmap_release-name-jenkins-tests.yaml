@@ -1,0 +1,12 @@
+apiVersion: v1
+data:
+  run.sh: |-
+    @test "Testing Jenkins UI is accessible" {
+      curl --retry 48 --retry-delay 10 RELEASE-NAME-jenkins:8080/login
+    }
+kind: ConfigMap
+metadata:
+  annotations:
+    helm.sh/hook: test
+  name: RELEASE-NAME-jenkins-tests
+  namespace: default

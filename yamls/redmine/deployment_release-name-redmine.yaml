@@ -1,0 +1,114 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/component: redmine
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: redmine
+    helm.sh/chart: redmine-17.2.3
+  name: RELEASE-NAME-redmine
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: redmine
+      app.kubernetes.io/instance: RELEASE-NAME
+      app.kubernetes.io/name: redmine
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: redmine
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: redmine
+        helm.sh/chart: redmine-17.2.3
+    spec:
+      affinity:
+        nodeAffinity: null
+        podAffinity: null
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: RELEASE-NAME
+                  app.kubernetes.io/name: redmine
+              namespaces:
+              - default
+              topologyKey: kubernetes.io/hostname
+            weight: 1
+      containers:
+      - env:
+        - name: BITNAMI_DEBUG
+          value: "false"
+        - name: ALLOW_EMPTY_PASSWORD
+          value: "no"
+        - name: REDMINE_DATABASE_TYPE
+          value: mariadb
+        - name: REDMINE_DATABASE_HOST
+          value: RELEASE-NAME-mariadb
+        - name: REDMINE_DATABASE_NAME
+          value: my_database
+        - name: REDMINE_DATABASE_USER
+          value: bn_redmine
+        - name: REDMINE_DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: mariadb-password
+              name: RELEASE-NAME-mariadb
+        - name: REDMINE_DATABASE_PORT_NUMBER
+          value: "3306"
+        - name: REDMINE_USERNAME
+          value: user
+        - name: REDMINE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: redmine-password
+              name: RELEASE-NAME-redmine
+        - name: REDMINE_EMAIL
+          value: user@example.com
+        - name: REDMINE_LANG
+          value: en
+        envFrom: null
+        image: docker.io/bitnami/redmine:4.2.3-debian-10-r88
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 6
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 300
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        name: RELEASE-NAME-redmine
+        ports:
+        - containerPort: 3000
+          name: http
+        readinessProbe:
+          failureThreshold: 6
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        resources:
+          limits: {}
+          requests:
+            cpu: 300m
+            memory: 512Mi
+        volumeMounts:
+        - mountPath: /bitnami/redmine
+          name: redmine-data
+      initContainers: null
+      serviceAccountName: default
+      volumes:
+      - name: redmine-data
+        persistentVolumeClaim:
+          claimName: RELEASE-NAME-redmine

@@ -1,0 +1,22 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  labels:
+    app: apertium
+    chart: apertium-0.1.1
+    heritage: Helm
+    release: RELEASE-NAME
+  name: apertium-RELEASE-NAME
+spec:
+  ingress:
+  - ports:
+    - port: 2737
+      protocol: TCP
+    - port: 9102
+      protocol: TCP
+  podSelector:
+    matchLabels:
+      app: apertium
+      release: RELEASE-NAME
+  policyTypes:
+  - Ingress

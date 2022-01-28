@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: mathoid
+    chart: mathoid-0.1.1
+    heritage: Helm
+    release: RELEASE-NAME
+  name: mathoid-RELEASE-NAME
+spec:
+  ports:
+  - name: http
+    port: 10044
+    protocol: TCP
+  selector:
+    app: mathoid
+    release: RELEASE-NAME
+    routed_via: RELEASE-NAME
+  type: NodePort

@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    meta.helm.sh/release-name: RELEASE-NAME
+    meta.helm.sh/release-namespace: default
+  labels:
+    app: RELEASE-NAME-reloader
+    app.kubernetes.io/managed-by: Helm
+    chart: reloader-v0.0.104
+    group: com.stakater.platform
+    heritage: Helm
+    provider: stakater
+    release: RELEASE-NAME
+    version: v0.0.104
+  name: RELEASE-NAME-reloader
+  namespace: default
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: RELEASE-NAME-reloader
+      release: RELEASE-NAME
+  template:
+    metadata:
+      labels:
+        app: RELEASE-NAME-reloader
+        app.kubernetes.io/managed-by: Helm
+        chart: reloader-v0.0.104
+        group: com.stakater.platform
+        heritage: Helm
+        provider: stakater
+        release: RELEASE-NAME
+        version: v0.0.104
+    spec:
+      containers:
+      - image: stakater/reloader:v0.0.104
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 5
+          httpGet:
+            path: /metrics
+            port: http
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        name: RELEASE-NAME-reloader
+        ports:
+        - containerPort: 9090
+          name: http
+        readinessProbe:
+          failureThreshold: 5
+          httpGet:
+            path: /metrics
+            port: http
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+      serviceAccountName: RELEASE-NAME-reloader

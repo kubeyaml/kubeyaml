@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: RELEASE-NAME-nuclio-controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nuclio
+      nuclio.io/app: controller
+      nuclio.io/class: service
+      nuclio.io/name: RELEASE-NAME-nuclio-controller
+      release: RELEASE-NAME
+  template:
+    metadata:
+      annotations:
+        checksum/configmap-platform: c4e5012d9b1ac4436c97c23d57f47be5f4febc5de8cfefdfa05ed847a48a0f81
+        nuclio.io/version: 1.7.6-amd64
+      labels:
+        app: nuclio
+        nuclio.io/app: controller
+        nuclio.io/class: service
+        nuclio.io/name: RELEASE-NAME-nuclio-controller
+        release: RELEASE-NAME
+    spec:
+      containers:
+      - env:
+        - name: NUCLIO_CONTROLLER_EXTERNAL_IP_ADDRESSES
+          value: ""
+        - name: NUCLIO_CONTROLLER_IMAGE_PULL_SECRETS
+          value: null
+        - name: NUCLIO_CONTROLLER_CRON_TRIGGER_CRON_JOB_IMAGE_NAME
+          value: appropriate/curl:latest
+        - name: NUCLIO_CONTROLLER_CRON_TRIGGER_CRON_JOB_IMAGE_PULL_POLICY
+          value: IfNotPresent
+        - name: NUCLIO_CONTROLLER_FUNCTION_MONITOR_INTERVAL
+          value: 3m
+        - name: NUCLIO_CONTROLLER_FUNCTION_OPERATOR_NUM_WORKERS
+          value: "4"
+        - name: NUCLIO_CONTROLLER_FUNCTION_EVENT_OPERATOR_NUM_WORKERS
+          value: "2"
+        - name: NUCLIO_CONTROLLER_PROJECT_OPERATOR_NUM_WORKERS
+          value: "2"
+        - name: NUCLIO_CONTROLLER_API_GATEWAY_OPERATOR_NUM_WORKERS
+          value: "2"
+        - name: NUCLIO_CONTROLLER_RESYNC_INTERVAL
+          value: "0"
+        image: quay.io/nuclio/controller:1.7.6-amd64
+        imagePullPolicy: IfNotPresent
+        name: RELEASE-NAME-nuclio-controller
+      serviceAccountName: RELEASE-NAME-nuclio

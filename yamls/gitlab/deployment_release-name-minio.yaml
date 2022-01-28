@@ -1,0 +1,96 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations: null
+  labels:
+    app: minio
+    chart: minio-0.4.3
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-minio
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: minio
+      component: app
+      release: RELEASE-NAME
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations: null
+      labels:
+        app: minio
+        chart: minio-0.4.3
+        component: app
+        heritage: Helm
+        release: RELEASE-NAME
+      name: RELEASE-NAME-minio
+    spec:
+      automountServiceAccountToken: false
+      containers:
+      - args:
+        - -C
+        - /tmp/.minio
+        - --quiet
+        - server
+        - /export
+        image: minio/minio:RELEASE.2017-12-28T01-21-00Z
+        livenessProbe:
+          tcpSocket:
+            port: 9000
+          timeoutSeconds: 1
+        name: minio
+        ports:
+        - containerPort: 9000
+          name: service
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+        volumeMounts:
+        - mountPath: /export
+          name: export
+        - mountPath: /tmp/.minio
+          name: minio-server-config
+        - mountPath: /podinfo
+          name: podinfo
+          readOnly: false
+      initContainers:
+      - command:
+        - sh
+        - /config/configure
+        image: registry.gitlab.com/gitlab-org/cloud-native/mirror/images/busybox:latest
+        name: configure
+        resources:
+          requests:
+            cpu: 50m
+        volumeMounts:
+        - mountPath: /config
+          name: minio-configuration
+        - mountPath: /minio
+          name: minio-server-config
+      securityContext:
+        fsGroup: 1000
+        runAsUser: 1000
+      volumes:
+      - downwardAPI:
+          items:
+          - fieldRef:
+              fieldPath: metadata.labels
+            path: labels
+        name: podinfo
+      - name: export
+        persistentVolumeClaim:
+          claimName: RELEASE-NAME-minio
+      - name: minio-configuration
+        projected:
+          sources:
+          - configMap:
+              name: RELEASE-NAME-minio-config-cm
+          - secret:
+              name: RELEASE-NAME-minio-secret
+      - emptyDir:
+          medium: Memory
+        name: minio-server-config

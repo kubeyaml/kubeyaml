@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: minio
+    chart: minio-3.4.7
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-minio
+spec:
+  podManagementPolicy: Parallel
+  replicas: 16
+  selector:
+    matchLabels:
+      app: minio
+      release: RELEASE-NAME
+  serviceName: RELEASE-NAME-minio-svc
+  template:
+    metadata:
+      annotations:
+        checksum/config: 760ad0daf14f8fb07eb5afece982f71dfded4e0d2b5426fc6b377cc24f18cdad
+        checksum/secrets: 1e9caa5adfd0cf2a7fc3d387bc11b324ee99189a1840a39a1b8abdbb341027b8
+      labels:
+        app: minio
+        release: RELEASE-NAME
+      name: RELEASE-NAME-minio
+    spec:
+      containers:
+      - command:
+        - /bin/sh
+        - -ce
+        - /usr/bin/docker-entrypoint.sh minio server  http://RELEASE-NAME-minio-{0...15}.RELEASE-NAME-minio-svc.default.svc.cluster.local/export
+          -S /etc/minio/certs/ --address :9000 --console-address :9001
+        env:
+        - name: MINIO_ROOT_USER
+          valueFrom:
+            secretKeyRef:
+              key: rootUser
+              name: RELEASE-NAME-minio
+        - name: MINIO_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: rootPassword
+              name: RELEASE-NAME-minio
+        - name: MINIO_PROMETHEUS_AUTH_TYPE
+          value: public
+        image: quay.io/minio/minio:RELEASE.2021-12-29T06-49-06Z
+        imagePullPolicy: IfNotPresent
+        name: minio
+        ports:
+        - containerPort: 9000
+          name: http
+        - containerPort: 9001
+          name: http-console
+        resources:
+          requests:
+            memory: 16Gi
+        volumeMounts:
+        - mountPath: /export
+          name: export
+      securityContext:
+        fsGroup: 1000
+        runAsGroup: 1000
+        runAsUser: 1000
+      serviceAccountName: minio-sa
+      volumes:
+      - name: minio-user
+        secret:
+          secretName: RELEASE-NAME-minio
+  updateStrategy:
+    type: RollingUpdate
+  volumeClaimTemplates:
+  - metadata:
+      name: export
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 500Gi

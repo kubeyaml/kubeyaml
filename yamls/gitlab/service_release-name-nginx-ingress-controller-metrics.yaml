@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    gitlab.com/prometheus_port: "10254"
+    gitlab.com/prometheus_scrape: "true"
+    prometheus.io/port: "10254"
+    prometheus.io/scrape: "true"
+  labels:
+    app: nginx-ingress
+    app.kubernetes.io/component: controller
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/version: 1.0.4
+    chart: nginx-ingress-4.0.6
+    component: controller
+    helm.sh/chart: nginx-ingress-4.0.6
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-nginx-ingress-controller-metrics
+  namespace: default
+spec:
+  ports:
+  - name: metrics
+    port: 10254
+    protocol: TCP
+    targetPort: metrics
+  selector:
+    app: nginx-ingress
+    component: controller
+    release: RELEASE-NAME
+  type: ClusterIP

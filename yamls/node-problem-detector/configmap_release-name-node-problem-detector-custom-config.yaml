@@ -1,0 +1,11 @@
+apiVersion: v1
+data: {}
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: node-problem-detector
+    helm.sh/chart: node-problem-detector-2.0.9
+  name: RELEASE-NAME-node-problem-detector-custom-config
+  namespace: default

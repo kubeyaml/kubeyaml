@@ -1,0 +1,84 @@
+apiVersion: v1
+data:
+  configure: |
+    set -e
+    config_dir="/init-config"
+    secret_dir="/init-secrets"
+
+    for secret in   ; do
+      mkdir -p "${secret_dir}/${secret}"
+      cp -v -r -L "${config_dir}/${secret}/." "${secret_dir}/${secret}/"
+    done
+    for secret in redis postgres ; do
+      if [ -e "${config_dir}/${secret}" ]; then
+        mkdir -p "${secret_dir}/${secret}"
+        cp -v -r -L "${config_dir}/${secret}/." "${secret_dir}/${secret}/"
+      fi
+    done
+  gitlab-exporter.yml.erb: |
+    server:
+      name: webrick
+      listen_address: 0.0.0.0
+      listen_port: 9168
+
+    probes:
+      db_common: &db_common
+        methods:
+          - probe_db
+        opts:
+          connection_string: dbname=gitlabhq_production user=gitlab host=RELEASE-NAME-postgresql.default.svc port=5432 password='<%= File.read('/etc/gitlab/postgres/psql-password-main').strip.gsub(/[\'\\]/) { |esc| '\\' + esc } %>'
+      database:
+        multiple: true
+        ci_builds:
+          class_name: Database::CiBuildsProber
+          <<: *db_common
+        tuple_stats:
+          class_name: Database::TuplesProber
+          <<: *db_common
+        rows_count:
+          class_name: Database::RowCountProber
+          <<: *db_common
+      database_bloat:
+        class_name: Database::BloatProber
+        <<: *db_common
+
+      sidekiq: &sidekiq
+        methods:
+          - probe_queues
+          - probe_workers
+          - probe_retries
+          - probe_stats
+        opts:
+          redis_url: redis://:<%= ERB::Util::url_encode(File.read("/etc/gitlab/redis/redis-password").strip) %>@RELEASE-NAME-redis-master.default.svc:6379
+          redis_enable_client: false
+
+      ruby: &ruby
+        methods:
+          - probe_gc
+        opts:
+          quantiles: false
+
+      metrics:
+        multiple: true
+        ruby:
+          <<: *ruby
+        sidekiq:
+          <<: *sidekiq
+        ci_builds:
+          class_name: Database::CiBuildsProber
+          <<: *db_common
+        tuple_stats:
+          class_name: Database::TuplesProber
+          <<: *db_common
+        rows_count:
+          class_name: Database::RowCountProber
+          <<: *db_common
+kind: ConfigMap
+metadata:
+  labels:
+    app: gitlab-exporter
+    chart: gitlab-exporter-5.7.0
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-gitlab-exporter
+  namespace: default

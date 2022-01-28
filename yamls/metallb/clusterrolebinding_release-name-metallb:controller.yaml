@@ -1,0 +1,18 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: metallb
+    app.kubernetes.io/version: v0.11.0
+    helm.sh/chart: metallb-0.11.0
+  name: RELEASE-NAME-metallb:controller
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: RELEASE-NAME-metallb:controller
+subjects:
+- kind: ServiceAccount
+  name: RELEASE-NAME-metallb-controller
+  namespace: default

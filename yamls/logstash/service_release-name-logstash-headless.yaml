@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: RELEASE-NAME-logstash
+    chart: logstash
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-logstash-headless
+spec:
+  clusterIP: None
+  ports:
+  - name: http
+    port: 9600
+  selector:
+    app: RELEASE-NAME-logstash

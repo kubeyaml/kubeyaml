@@ -1,0 +1,440 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: insight
+    chart: insight-101.3.0
+    component: insight-server
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-insight
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: insight
+      component: insight-server
+      release: RELEASE-NAME
+  serviceName: RELEASE-NAME-insight
+  template:
+    metadata:
+      annotations:
+        checksum/database-secrets: b36bc6f2d0bb1fe9790445c772b26a83c8609aa428beae58a1624b37f063c2d7
+        checksum/systemyaml: 2c9d28360557e90a177f6d6e6d5e78adf82576083cb67449241db56bf207cca5
+      labels:
+        app: insight
+        component: insight-server
+        release: RELEASE-NAME
+    spec:
+      containers:
+      - command:
+        - /bin/sh
+        - -c
+        - "sleep 10; if [[ $insight_server_pod_name == *\"-0\"* ]] ; then echo \"Setting
+          clustersetup to no\" && export ELASTICSEARCH_CLUSTERSETUP=NO; else echo
+          \"Setting clustersetup to yes\" && export ELASTICSEARCH_CLUSTERSETUP=YES;
+          fi; (/usr/local/bin/initializeSearchGuard.sh &) && docker-entrypoint.sh
+          'elasticsearch';        \n"
+        env:
+        - name: insight_server_pod_name
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: cluster.name
+          value: es-cluster
+        - name: xpack.security.enabled
+          value: "false"
+        - name: path.logs
+          value: /var/opt/jfrog/insight/log/elasticsearch
+        - name: network.host
+          value: 0.0.0.0
+        - name: transport.host
+          value: 0.0.0.0
+        - name: transport.port
+          value: "9300"
+        - name: discovery.seed_hosts
+          value: RELEASE-NAME-insight
+        - name: cluster.initial_master_nodes
+          value: RELEASE-NAME-insight-0,
+        - name: ELASTICSEARCH_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: RELEASE-NAME-insight-elasticsearch-cred
+        - name: ELASTICSEARCH_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: RELEASE-NAME-insight-elasticsearch-cred
+        - name: JF_SHARED_ELASTICSEARCH_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: RELEASE-NAME-insight-elasticsearch-cred
+        - name: JF_SHARED_ELASTICSEARCH_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: RELEASE-NAME-insight-elasticsearch-cred
+        - name: ES_JAVA_OPTS
+          value: ' -Xms2g -Xmx2g '
+        - name: JF_SHARED_ELASTICSEARCH_URL
+          valueFrom:
+            secretKeyRef:
+              key: url
+              name: RELEASE-NAME-insight-elasticsearch-cred
+        image: releases-docker.jfrog.io/jfrog/elasticsearch-sg:7.15.1
+        imagePullPolicy: null
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /_cluster/health
+            port: 9200
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 10
+        name: elasticsearch
+        ports:
+        - containerPort: 9300
+          name: tcp-estransprt
+        readinessProbe:
+          failureThreshold: 10
+          httpGet:
+            path: /_cluster/health
+            port: 9200
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 10
+        resources: {}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - NET_RAW
+          runAsNonRoot: true
+          runAsUser: 1000
+        startupProbe:
+          failureThreshold: 60
+          httpGet:
+            path: /_cluster/health
+            port: 9200
+          initialDelaySeconds: 30
+          periodSeconds: 5
+        volumeMounts:
+        - mountPath: /usr/share/elasticsearch/data
+          name: elasticsearch-data
+        - mountPath: /var/opt/jfrog/insight
+          name: insight-data
+      - command:
+        - /bin/bash
+        - -c
+        - |
+          exec /opt/jfrog/router/app/bin/entrypoint-router.sh;
+        env:
+        - name: JF_ROUTER_TOPOLOGY_LOCAL_REQUIREDSERVICETYPES
+          value: jfisc,jfisv,jfesc
+        image: releases-docker.jfrog.io/jfrog/router:7.28.2
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /router/api/v1/system/health
+            port: 8082
+            scheme: HTTP
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 10
+        name: router
+        ports:
+        - containerPort: 8082
+          name: http-router
+        readinessProbe:
+          failureThreshold: 10
+          httpGet:
+            path: /router/api/v1/system/health
+            port: 8082
+            scheme: HTTP
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 10
+        resources: {}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - NET_RAW
+          runAsNonRoot: true
+        startupProbe:
+          failureThreshold: 60
+          httpGet:
+            path: /router/api/v1/system/health
+            port: 8082
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          timeoutSeconds: 1
+        volumeMounts:
+        - mountPath: /var/opt/jfrog/router
+          name: insight-data
+      - command:
+        - /bin/bash
+        - -c
+        - |
+          exec /opt/jfrog/insight/app/bin/entrypoint-server.sh;
+        env:
+        - name: JF_SHARED_DATABASE_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: db-user
+              name: RELEASE-NAME-insight-database-creds
+        - name: JF_SHARED_DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: db-password
+              name: RELEASE-NAME-insight-database-creds
+        - name: JF_SHARED_DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              key: db-url
+              name: RELEASE-NAME-insight-database-creds
+        image: releases-docker.jfrog.io/jfrog/insight-server:1.3.0
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          exec:
+            command:
+            - curl
+            - http://127.0.0.1:8087/api/v1/system/ping
+          failureThreshold: 3
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: insight-server
+        ports:
+        - containerPort: 8087
+          name: http-insight
+          protocol: TCP
+        readinessProbe:
+          exec:
+            command:
+            - curl
+            - http://127.0.0.1:8087/api/v1/system/ping
+          failureThreshold: 10
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources: {}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - NET_RAW
+          runAsNonRoot: true
+        startupProbe:
+          exec:
+            command:
+            - curl
+            - http://127.0.0.1:8087/api/v1/system/ping
+          failureThreshold: 60
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          timeoutSeconds: 1
+        volumeMounts:
+        - mountPath: /var/opt/jfrog/insight
+          name: insight-data
+      - env:
+        - name: JF_SHARED_DATABASE_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: db-user
+              name: RELEASE-NAME-insight-database-creds
+        - name: JF_SHARED_DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: db-password
+              name: RELEASE-NAME-insight-database-creds
+        - name: JF_SHARED_DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              key: db-url
+              name: RELEASE-NAME-insight-database-creds
+        image: releases-docker.jfrog.io/jfrog/insight-scheduler:1.3.0
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          exec:
+            command:
+            - curl
+            - http://127.0.0.1:8085/api/v1/system/ping
+          failureThreshold: 3
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: insight-scheduler
+        ports:
+        - containerPort: 8085
+          name: http-insched
+          protocol: TCP
+        readinessProbe:
+          exec:
+            command:
+            - curl
+            - http://127.0.0.1:8085/api/v1/system/ping
+          failureThreshold: 10
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources: {}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - NET_RAW
+          runAsNonRoot: true
+        startupProbe:
+          exec:
+            command:
+            - curl
+            - http://127.0.0.1:8085/api/v1/system/ping
+          failureThreshold: 60
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          timeoutSeconds: 1
+        volumeMounts:
+        - mountPath: /var/opt/jfrog/insight
+          name: insight-data
+      initContainers:
+      - command:
+        - /bin/bash
+        - -c
+        - |
+          until nc -z -w 5 RELEASE-NAME-artifactory 8082; do echo "Waiting for artifactory to start"; sleep 10; done; echo "Running init db scripts"; su postgres -c "bash /scripts/setupPostgres.sh"
+        env:
+        - name: PGUSERNAME
+          value: postgres
+        - name: DB_HOST
+          value: RELEASE-NAME-postgresql
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_SSL_MODE
+          value: disable
+        - name: DB_NAME
+          value: insight
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: db-user
+              name: RELEASE-NAME-insight-database-creds
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: db-password
+              name: RELEASE-NAME-insight-database-creds
+        - name: PGPASSWORD
+          value: postgres
+        - name: CHART_NAME
+          value: insight
+        image: releases-docker.jfrog.io/postgres:13.4-alpine
+        imagePullPolicy: Always
+        name: postgres-setup-init
+        securityContext:
+          runAsUser: 0
+        volumeMounts:
+        - mountPath: /scripts
+          name: postgres-setup-init-vol
+      - command:
+        - /bin/sh
+        - -c
+        - |
+          sysctl -w vm.max_map_count=262144
+        image: releases-docker.jfrog.io/alpine:3.14.2
+        name: elasticsearch-init
+        resources:
+          limits:
+            cpu: "1"
+            memory: 1Gi
+          requests:
+            cpu: 10m
+            memory: 50Mi
+        securityContext:
+          capabilities:
+            drop:
+            - NET_RAW
+          privileged: true
+          runAsUser: 0
+        volumeMounts:
+        - mountPath: /usr/share/elasticsearch/data
+          name: elasticsearch-data
+      - command:
+        - bash
+        - -c
+        - |
+          if [[ -e "/var/opt/jfrog/insight/etc/filebeat.yaml" ]]; then chmod 644 /var/opt/jfrog/insight/etc/filebeat.yaml; fi; echo "Copy system.yaml to /var/opt/jfrog/insight/etc"; mkdir -p /var/opt/jfrog/insight/etc; mkdir -p /var/opt/jfrog/insight/log/elasticsearch; chmod 776 /var/opt/jfrog/insight/log/elasticsearch; cp -fv /tmp/etc/system.yaml /var/opt/jfrog/insight/etc/system.yaml; echo "Copy application.yaml to /var/opt/jfrog/insight/bootstrap/insight"; mkdir -p /var/opt/jfrog/insight/bootstrap/insight; cp -fv /tmp/etc/application.yaml /var/opt/jfrog/insight/bootstrap/insight/application.yaml; echo "Remove /var/opt/jfrog/insight/lost+found folder if exists"; rm -rfv /var/opt/jfrog/insight/lost+found; echo "Copy joinKey to /var/opt/jfrog/insight/etc/security"; mkdir -p /var/opt/jfrog/insight/etc/security; echo ${INSIGHT_JOIN_KEY} > /var/opt/jfrog/insight/etc/security/join.key; echo "Copy masterKey to /var/opt/jfrog/insight/etc/security"; mkdir -p /var/opt/jfrog/insight/etc/security; echo ${INSIGHT_MASTER_KEY} > /var/opt/jfrog/insight/etc/security/master.key;
+        env:
+        - name: INSIGHT_JOIN_KEY
+          valueFrom:
+            secretKeyRef:
+              key: join-key
+              name: RELEASE-NAME-insight
+        - name: INSIGHT_MASTER_KEY
+          valueFrom:
+            secretKeyRef:
+              key: master-key
+              name: RELEASE-NAME-insight
+        image: releases-docker.jfrog.io/jfrog/ubi-minimal:8.5-204
+        name: copy-system-yaml
+        resources:
+          limits:
+            cpu: "1"
+            memory: 1Gi
+          requests:
+            cpu: 10m
+            memory: 50Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - NET_RAW
+          runAsNonRoot: true
+        volumeMounts:
+        - mountPath: /var/opt/jfrog/insight
+          name: insight-data
+        - mountPath: /tmp/etc/system.yaml
+          name: systemyaml
+          subPath: system.yaml
+      securityContext:
+        fsGroup: 1040
+        runAsUser: 1040
+      serviceAccountName: default
+      volumes:
+      - name: systemyaml
+        secret:
+          secretName: RELEASE-NAME-insight-systemyaml
+      - configMap:
+          name: RELEASE-NAME-setup-script
+        name: postgres-setup-init-vol
+  updateStrategy:
+    type: RollingUpdate
+  volumeClaimTemplates:
+  - metadata:
+      name: insight-data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 100Gi
+  - metadata:
+      name: elasticsearch-data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 100Gi

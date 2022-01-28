@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: dask
+    chart: dask-2022.1.1
+    component: scheduler
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-dask-scheduler
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dask
+      component: scheduler
+      release: RELEASE-NAME
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: dask
+        component: scheduler
+        release: RELEASE-NAME
+    spec:
+      containers:
+      - args:
+        - dask-scheduler
+        - --port
+        - "8786"
+        - --bokeh-port
+        - "8787"
+        env: null
+        image: daskdev/dask:2022.1.0
+        imagePullPolicy: IfNotPresent
+        name: RELEASE-NAME-dask-scheduler
+        ports:
+        - containerPort: 8786
+        - containerPort: 8787
+        resources: {}
+      imagePullSecrets: null

@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations: null
+  labels:
+    app: gitlab-exporter
+    chart: gitlab-exporter-5.7.0
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-gitlab-exporter
+  namespace: default
+spec:
+  ports:
+  - name: gitlab-exporter
+    port: 9168
+    protocol: TCP
+    targetPort: 9168
+  selector:
+    app: gitlab-exporter
+    release: RELEASE-NAME
+  type: ClusterIP
