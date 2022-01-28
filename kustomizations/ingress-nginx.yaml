@@ -1,0 +1,2 @@
+resources:
+- https://github.com/kubernetes/ingress-nginx.git/deploy/static/provider/baremetal

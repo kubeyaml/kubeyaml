@@ -1,0 +1,5 @@
+helmCharts:
+- name: minecraft
+  releaseName: ""
+  repo: https://itzg.github.io/minecraft-server-charts
+

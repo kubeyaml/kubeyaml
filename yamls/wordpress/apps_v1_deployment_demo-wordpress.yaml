@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: wordpress
+  name: demo-wordpress
+spec:
+  selector:
+    matchLabels:
+      app: wordpress
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: wordpress
+    spec:
+      containers:
+      - env:
+        - name: WORDPRESS_DB_HOST
+          value: demo-mysql
+        - name: WORDPRESS_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: demo-mysql-pass
+        image: wordpress:4.8-apache
+        name: wordpress
+        ports:
+        - containerPort: 80
+          name: wordpress
+        volumeMounts:
+        - mountPath: /var/www/html
+          name: wordpress-persistent-storage
+      initContainers:
+      - args:
+        - -c
+        - echo demo-wordpress; echo demo-mysql
+        command:
+        - /bin/sh
+        image: debian
+        name: init-command
+      volumes:
+      - emptyDir: {}
+        name: wordpress-persistent-storage

@@ -1,0 +1,4 @@
+helmCharts:
+- name: alertmanager
+  releaseName: ""
+  repo: https://prometheus-community.github.io/helm-charts

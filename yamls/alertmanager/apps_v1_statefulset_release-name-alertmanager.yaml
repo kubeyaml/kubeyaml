@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: alertmanager
+    app.kubernetes.io/version: v0.23.0
+    helm.sh/chart: alertmanager-0.14.0
+  name: RELEASE-NAME-alertmanager
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: RELEASE-NAME
+      app.kubernetes.io/name: alertmanager
+  serviceName: RELEASE-NAME-alertmanager-headless
+  template:
+    metadata:
+      annotations:
+        checksum/config: 1bd0e58dee7d2f54734c366476bfe6af33144b228236d60cb213b4a577fa1ea5
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/name: alertmanager
+    spec:
+      containers:
+      - args:
+        - --storage.path=/alertmanager
+        - --config.file=/etc/alertmanager/alertmanager.yml
+        env:
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.podIP
+        image: quay.io/prometheus/alertmanager:v0.23.0
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /
+            port: http
+        name: alertmanager
+        ports:
+        - containerPort: 9093
+          name: http
+          protocol: TCP
+        readinessProbe:
+          httpGet:
+            path: /
+            port: http
+        resources: {}
+        securityContext:
+          runAsGroup: 65534
+          runAsNonRoot: true
+          runAsUser: 65534
+        volumeMounts:
+        - mountPath: /etc/alertmanager
+          name: config
+        - mountPath: /alertmanager
+          name: storage
+      securityContext:
+        fsGroup: 65534
+      serviceAccountName: RELEASE-NAME-alertmanager
+      volumes:
+      - configMap:
+          name: RELEASE-NAME-alertmanager
+        name: config
+  volumeClaimTemplates:
+  - metadata:
+      name: storage
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 50Mi
