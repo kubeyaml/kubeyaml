@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: memcached
+    helm.sh/chart: memcached-6.0.2
+  name: RELEASE-NAME-memcached
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: RELEASE-NAME
+      app.kubernetes.io/name: memcached
+  strategy:
+    rollingUpdate: {}
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations: null
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: memcached
+        helm.sh/chart: memcached-6.0.2
+    spec:
+      affinity:
+        nodeAffinity: null
+        podAffinity: null
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: RELEASE-NAME
+                  app.kubernetes.io/name: memcached
+              namespaces:
+              - default
+              topologyKey: kubernetes.io/hostname
+            weight: 1
+      containers:
+      - env:
+        - name: BITNAMI_DEBUG
+          value: "false"
+        image: docker.io/bitnami/memcached:1.6.13-debian-10-r16
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 6
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          tcpSocket:
+            port: memcache
+          timeoutSeconds: 5
+        name: memcached
+        ports:
+        - containerPort: 11211
+          name: memcache
+        readinessProbe:
+          failureThreshold: 6
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          successThreshold: 1
+          tcpSocket:
+            port: memcache
+          timeoutSeconds: 3
+        resources:
+          limits: {}
+          requests:
+            cpu: 250m
+            memory: 256Mi
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+        volumeMounts:
+        - mountPath: /tmp
+          name: tmp
+      securityContext:
+        fsGroup: 1001
+      serviceAccountName: default
+      volumes:
+      - emptyDir: {}
+        name: tmp

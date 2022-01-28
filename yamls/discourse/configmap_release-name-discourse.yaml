@@ -1,0 +1,26 @@
+apiVersion: v1
+data:
+  DISCOURSE_DATABASE_HOST: RELEASE-NAME-postgresql
+  DISCOURSE_DATABASE_NAME: bitnami_application
+  DISCOURSE_DATABASE_PORT_NUMBER: "5432"
+  DISCOURSE_DATABASE_USER: bn_discourse
+  DISCOURSE_EMAIL: user@example.com
+  DISCOURSE_HOST: ""
+  DISCOURSE_REDIS_HOST: RELEASE-NAME-redis-master
+  DISCOURSE_REDIS_PORT_NUMBER: "6379"
+  DISCOURSE_SITE_NAME: My Site!
+  DISCOURSE_SKIP_INSTALL: "no"
+  DISCOURSE_USERNAME: user
+  POSTGRESQL_CLIENT_CREATE_DATABASE_EXTENSIONS: hstore,pg_trgm
+  POSTGRESQL_CLIENT_CREATE_DATABASE_NAME: bitnami_application
+  POSTGRESQL_CLIENT_DATABASE_HOST: RELEASE-NAME-postgresql
+  POSTGRESQL_CLIENT_DATABASE_PORT_NUMBER: "5432"
+  POSTGRESQL_CLIENT_POSTGRES_USER: postgres
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: discourse
+    helm.sh/chart: discourse-5.2.3
+  name: RELEASE-NAME-discourse

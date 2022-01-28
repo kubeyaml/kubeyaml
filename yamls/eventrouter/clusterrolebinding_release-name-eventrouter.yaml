@@ -1,0 +1,17 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app: eventrouter
+    chart: eventrouter-0.4.0
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-eventrouter
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: RELEASE-NAME-eventrouter
+subjects:
+- kind: ServiceAccount
+  name: RELEASE-NAME-eventrouter
+  namespace: default

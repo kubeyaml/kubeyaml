@@ -1,0 +1,158 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app.kubernetes.io/component: replica
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: redis
+    helm.sh/chart: redis-16.2.0
+  name: RELEASE-NAME-redis-replicas
+  namespace: default
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: replica
+      app.kubernetes.io/instance: RELEASE-NAME
+      app.kubernetes.io/name: redis
+  serviceName: RELEASE-NAME-redis-headless
+  template:
+    metadata:
+      annotations:
+        checksum/configmap: d6b92d1aa28a507529407ca520a009f028f59efec40604409900f76d2133e283
+        checksum/health: cb25fe6bc0999e9b514e7f2c0d8bce9ae8fee60f3f92324e750582330893f49e
+        checksum/scripts: 5e5bfdaeda2a31bf9f1352e680d0bedf59d4c1ebb02ee8d7c467591b997b56e2
+        checksum/secret: f5eea54bd774a6cf1f1b536bb4cdb9ec20e4ec167da6d112daa47d0552d9edbf
+      labels:
+        app.kubernetes.io/component: replica
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: redis
+        helm.sh/chart: redis-16.2.0
+    spec:
+      affinity:
+        nodeAffinity: null
+        podAffinity: null
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/component: replica
+                  app.kubernetes.io/instance: RELEASE-NAME
+                  app.kubernetes.io/name: redis
+              namespaces:
+              - default
+              topologyKey: kubernetes.io/hostname
+            weight: 1
+      containers:
+      - args:
+        - -c
+        - /opt/bitnami/scripts/start-scripts/start-replica.sh
+        command:
+        - /bin/bash
+        env:
+        - name: BITNAMI_DEBUG
+          value: "false"
+        - name: REDIS_REPLICATION_MODE
+          value: slave
+        - name: REDIS_MASTER_HOST
+          value: RELEASE-NAME-redis-master-0.RELEASE-NAME-redis-headless.default.svc.cluster.local
+        - name: REDIS_MASTER_PORT_NUMBER
+          value: "6379"
+        - name: ALLOW_EMPTY_PASSWORD
+          value: "no"
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: redis-password
+              name: RELEASE-NAME-redis
+        - name: REDIS_MASTER_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: redis-password
+              name: RELEASE-NAME-redis
+        - name: REDIS_TLS_ENABLED
+          value: "no"
+        - name: REDIS_PORT
+          value: "6379"
+        image: docker.io/bitnami/redis:6.2.6-debian-10-r103
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - /health/ping_liveness_local_and_master.sh 5
+          failureThreshold: 5
+          initialDelaySeconds: 20
+          periodSeconds: 5
+          successThreshold: 1
+          timeoutSeconds: 6
+        name: redis
+        ports:
+        - containerPort: 6379
+          name: redis
+        readinessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - /health/ping_readiness_local_and_master.sh 1
+          failureThreshold: 5
+          initialDelaySeconds: 20
+          periodSeconds: 5
+          successThreshold: 1
+          timeoutSeconds: 2
+        resources:
+          limits: {}
+          requests: {}
+        securityContext:
+          runAsUser: 1001
+        volumeMounts:
+        - mountPath: /opt/bitnami/scripts/start-scripts
+          name: start-scripts
+        - mountPath: /health
+          name: health
+        - mountPath: /data
+          name: redis-data
+          subPath: null
+        - mountPath: /opt/bitnami/redis/mounted-etc
+          name: config
+        - mountPath: /opt/bitnami/redis/etc
+          name: redis-tmp-conf
+      securityContext:
+        fsGroup: 1001
+      serviceAccountName: RELEASE-NAME-redis
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - configMap:
+          defaultMode: 493
+          name: RELEASE-NAME-redis-scripts
+        name: start-scripts
+      - configMap:
+          defaultMode: 493
+          name: RELEASE-NAME-redis-health
+        name: health
+      - configMap:
+          name: RELEASE-NAME-redis-configuration
+        name: config
+      - emptyDir: {}
+        name: redis-tmp-conf
+  updateStrategy:
+    rollingUpdate: {}
+    type: RollingUpdate
+  volumeClaimTemplates:
+  - metadata:
+      labels:
+        app.kubernetes.io/component: replica
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/name: redis
+      name: redis-data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 8Gi

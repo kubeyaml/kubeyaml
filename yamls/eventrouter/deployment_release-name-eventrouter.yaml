@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: eventrouter
+    chart: eventrouter-0.4.0
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-eventrouter
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: eventrouter
+      release: RELEASE-NAME
+  template:
+    metadata:
+      annotations:
+        checksum/config: ebf4d4a4ef21eba4c3dad9f43ced0435d1fe45d5c30430f61ae15b9aa0a4503c
+        prometheus.io/port: "8080"
+        prometheus.io/scrape: "true"
+      labels:
+        app: eventrouter
+        release: RELEASE-NAME
+    spec:
+      containers:
+      - image: docker-registry.wikimedia.org/eventrouter:0.3.0-6
+        imagePullPolicy: IfNotPresent
+        name: eventrouter
+        resources: {}
+        volumeMounts:
+        - mountPath: /tmp
+          name: tmp
+        - mountPath: /etc/eventrouter
+          name: config-volume
+      serviceAccountName: RELEASE-NAME-eventrouter
+      volumes:
+      - configMap:
+          name: RELEASE-NAME-eventrouter
+        name: config-volume
+      - emptyDir: {}
+        name: tmp
