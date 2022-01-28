@@ -1,0 +1,167 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: athenz-zms
+    chart: athenz-zms-1.0.0
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-athenz-zms
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: athenz-zms
+      release: RELEASE-NAME
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        prometheus.io/port: "8181"
+        prometheus.io/scrape: "true"
+      labels:
+        app: athenz-zms
+        chart: athenz-zms-1.0.0
+        release: RELEASE-NAME
+    spec:
+      containers:
+      - env:
+        - name: ZMS_DB_ADMIN_PASS
+          valueFrom:
+            secretKeyRef:
+              key: jdbc
+              name: RELEASE-NAME-athenz-zms
+        - name: ZMS_RODB_ADMIN_PASS
+          valueFrom:
+            secretKeyRef:
+              key: jdbcRo
+              name: RELEASE-NAME-athenz-zms
+        - name: ZMS_KEYSTORE_PASS
+          valueFrom:
+            secretKeyRef:
+              key: keystore
+              name: RELEASE-NAME-athenz-zms
+        - name: ZMS_TRUSTSTORE_PASS
+          valueFrom:
+            secretKeyRef:
+              key: truststore
+              name: RELEASE-NAME-athenz-zms
+        - name: ZMS_PORT
+          value: "4443"
+        image: docker.io/athenz/athenz-zms-server:latest
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 5
+          httpGet:
+            path: /zms/v1/status
+            port: zms
+            scheme: HTTPS
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: zms
+        ports:
+        - containerPort: 4443
+          name: zms
+        - containerPort: 8181
+          name: metrics
+        readinessProbe:
+          failureThreshold: 2
+          httpGet:
+            path: /zms/v1/status
+            port: zms
+            scheme: HTTPS
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources:
+          limits: {}
+          requests:
+            cpu: 500m
+            memory: 4096Mi
+        volumeMounts:
+        - mountPath: /opt/athenz/zms/conf/zms_server
+          name: config
+        - mountPath: /opt/athenz/zms/var/keys
+          name: zms-key
+        - mountPath: /opt/athenz/zms/var/certs
+          name: tls-stores
+        - mountPath: /opt/athenz/zms/logs/zms_server
+          name: log
+      initContainers:
+      - command:
+        - /bin/sh
+        - -c
+        - openssl pkcs12 -export -noiter -nomaciter -out "${ZMS_KEYSTORE_PATH}" -passout
+          "pass:${ZMS_KEYSTORE_PASS}" -in "${ZMS_CERT_PATH}" -inkey "${ZMS_CERT_KEY_PATH}"
+        env:
+        - name: ZMS_KEYSTORE_PATH
+          value: /opt/athenz/zms/var/certs/zms_keystore.pkcs12
+        - name: ZMS_KEYSTORE_PASS
+          valueFrom:
+            secretKeyRef:
+              key: keystore
+              name: RELEASE-NAME-athenz-zms
+        - name: ZMS_CERT_PATH
+          value: /opt/athenz/zms/var/tls/tls.crt
+        - name: ZMS_CERT_KEY_PATH
+          value: /opt/athenz/zms/var/tls/tls.key
+        image: docker.io/athenz/athenz-setup-env:latest
+        imagePullPolicy: IfNotPresent
+        name: tls-keystore
+        volumeMounts:
+        - mountPath: /opt/athenz/zms/var/tls
+          name: tls
+        - mountPath: /opt/athenz/zms/var/certs
+          name: tls-stores
+      - command:
+        - /bin/sh
+        - -c
+        - for ca in /opt/athenz/zms/var/tls/CAs/*.pem; do openssl x509 -outform pem
+          -in "${ca}" | keytool -importcert -noprompt -keystore "${ZMS_TRUSTSTORE_PATH}"
+          -storepass "${ZMS_TRUSTSTORE_PASS}" -storetype JKS -alias "$(basename ${ca})";
+          done
+        env:
+        - name: ZMS_TRUSTSTORE_PATH
+          value: /opt/athenz/zms/var/certs/zms_truststore.jks
+        - name: ZMS_TRUSTSTORE_PASS
+          valueFrom:
+            secretKeyRef:
+              key: truststore
+              name: RELEASE-NAME-athenz-zms
+        image: docker.io/athenz/athenz-setup-env:latest
+        imagePullPolicy: IfNotPresent
+        name: tls-truststore
+        volumeMounts:
+        - mountPath: /opt/athenz/zms/var/tls/CAs
+          name: tls-ca
+        - mountPath: /opt/athenz/zms/var/certs
+          name: tls-stores
+      securityContext:
+        fsGroup: 1001
+        runAsGroup: 1001
+        runAsUser: 10001
+      volumes:
+      - configMap:
+          name: RELEASE-NAME-athenz-zms-config
+        name: config
+      - name: zms-key
+        secret:
+          items:
+          - key: zms_private.pem
+            mode: 400
+            path: zms_private.pem
+          secretName: RELEASE-NAME-athenz-zms
+      - name: tls
+        secret:
+          secretName: RELEASE-NAME-athenz-zms-tls
+      - name: tls-ca
+        secret:
+          secretName: RELEASE-NAME-athenz-zms-tls-ca
+      - emptyDir: {}
+        name: tls-stores
+      - emptyDir: {}
+        name: log

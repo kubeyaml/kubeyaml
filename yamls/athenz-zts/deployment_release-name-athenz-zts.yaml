@@ -1,0 +1,351 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: athenz-zts
+    chart: athenz-zts-1.0.0
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-athenz-zts
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: athenz-zts
+      release: RELEASE-NAME
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        prometheus.io/port: "8181"
+        prometheus.io/scrape: "true"
+      labels:
+        app: athenz-zts
+        chart: athenz-zts-1.0.0
+        release: RELEASE-NAME
+    spec:
+      containers:
+      - env:
+        - name: ZTS_DB_ADMIN_PASS
+          valueFrom:
+            secretKeyRef:
+              key: jdbc
+              name: RELEASE-NAME-athenz-zts
+        - name: ZTS_KEYSTORE_PASS
+          valueFrom:
+            secretKeyRef:
+              key: keystore
+              name: RELEASE-NAME-athenz-zts
+        - name: ZTS_TRUSTSTORE_PASS
+          valueFrom:
+            secretKeyRef:
+              key: truststore
+              name: RELEASE-NAME-athenz-zts
+        - name: ZTS_SIGNER_KEYSTORE_PASS
+          valueFrom:
+            secretKeyRef:
+              key: signerKeystore
+              name: RELEASE-NAME-athenz-zts
+        - name: ZTS_SIGNER_TRUSTSTORE_PASS
+          valueFrom:
+            secretKeyRef:
+              key: signerTruststore
+              name: RELEASE-NAME-athenz-zts
+        - name: ZMS_CLIENT_KEYSTORE_PASS
+          valueFrom:
+            secretKeyRef:
+              key: zmsClientKeystore
+              name: RELEASE-NAME-athenz-zts
+        - name: ZMS_CLIENT_TRUSTSTORE_PASS
+          valueFrom:
+            secretKeyRef:
+              key: zmsClientTruststore
+              name: RELEASE-NAME-athenz-zts
+        - name: ZTS_PORT
+          value: "8443"
+        image: docker.io/athenz/athenz-zts-server:latest
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 5
+          httpGet:
+            path: /zts/v1/status
+            port: zts
+            scheme: HTTPS
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: zts
+        ports:
+        - containerPort: 8443
+          name: zts
+        - containerPort: 8181
+          name: metrics
+        readinessProbe:
+          failureThreshold: 2
+          httpGet:
+            path: /zts/v1/status
+            port: zts
+            scheme: HTTPS
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources:
+          limits: {}
+          requests:
+            cpu: 500m
+            memory: 4096Mi
+        volumeMounts:
+        - mountPath: /opt/athenz/zts/conf/zts_server
+          name: config
+          readOnly: true
+        - mountPath: /opt/athenz/zts/var/keys
+          name: zts-key
+          readOnly: true
+        - mountPath: /opt/athenz/zts/var/certs/zts_keystore.pkcs12
+          name: tls-stores
+          readOnly: true
+          subPath: zts_keystore.pkcs12
+        - mountPath: /opt/athenz/zts/var/certs/zts_truststore.jks
+          name: tls-stores
+          readOnly: true
+          subPath: zts_truststore.jks
+        - mountPath: /opt/athenz/zts/var/certs/zts_signer_keystore.pkcs12
+          name: signer-mtls-stores
+          readOnly: true
+          subPath: zts_signer_keystore.pkcs12
+        - mountPath: /opt/athenz/zts/var/certs/zts_signer_truststore.jks
+          name: signer-mtls-stores
+          readOnly: true
+          subPath: zts_signer_truststore.jks
+        - mountPath: /opt/athenz/zts/var/certs/zms_client_keystore.pkcs12
+          name: zms-client-mtls-stores
+          readOnly: true
+          subPath: zms_client_keystore.pkcs12
+        - mountPath: /opt/athenz/zts/var/certs/zms_client_truststore.jks
+          name: zms-client-mtls-stores
+          readOnly: true
+          subPath: zms_client_truststore.jks
+        - mountPath: /opt/athenz/zts/logs/zts_server
+          name: log
+        - mountPath: /opt/athenz/zts/var/zts_store
+          name: change-log-store
+      initContainers:
+      - command:
+        - /bin/sh
+        - -c
+        - wget -Sq --no-check-certificate -O - "$(jq -r '.zmsUrl' "${ATHENZ_CONF_PATH}")zms/v1/status"
+          | jq
+        env:
+        - name: ATHENZ_CONF_PATH
+          value: /opt/athenz/zts/conf/zts_server/athenz_conf.json
+        image: docker.io/athenz/athenz-setup-env:latest
+        imagePullPolicy: IfNotPresent
+        name: check-zms-status
+        volumeMounts:
+        - mountPath: /opt/athenz/zts/conf/zts_server
+          name: config
+      - command:
+        - /bin/chown
+        - -R
+        - "10001"
+        - /opt/athenz/zts/var/zts_store
+        image: docker.io/athenz/athenz-setup-env:latest
+        imagePullPolicy: IfNotPresent
+        name: chmod
+        securityContext:
+          runAsUser: 0
+        volumeMounts:
+        - mountPath: /opt/athenz/zts/var/zts_store
+          name: change-log-store
+      - command:
+        - /bin/sh
+        - -c
+        - openssl pkcs12 -export -noiter -nomaciter -out "${ZTS_KEYSTORE_PATH}" -passout
+          "pass:${ZTS_KEYSTORE_PASS}" -in "${ZTS_CERT_PATH}" -inkey "${ZTS_CERT_KEY_PATH}"
+        env:
+        - name: ZTS_KEYSTORE_PATH
+          value: /opt/athenz/zts/var/certs/zts_keystore.pkcs12
+        - name: ZTS_KEYSTORE_PASS
+          valueFrom:
+            secretKeyRef:
+              key: keystore
+              name: RELEASE-NAME-athenz-zts
+        - name: ZTS_CERT_PATH
+          value: /opt/athenz/zts/var/tls/tls.crt
+        - name: ZTS_CERT_KEY_PATH
+          value: /opt/athenz/zts/var/tls/tls.key
+        image: docker.io/athenz/athenz-setup-env:latest
+        imagePullPolicy: IfNotPresent
+        name: tls-keystore
+        volumeMounts:
+        - mountPath: /opt/athenz/zts/var/tls
+          name: tls
+        - mountPath: /opt/athenz/zts/var/certs
+          name: tls-stores
+      - command:
+        - /bin/sh
+        - -c
+        - for ca in /opt/athenz/zts/var/tls/CAs/*.pem; do openssl x509 -outform pem
+          -in "${ca}" | keytool -importcert -noprompt -keystore "${ZTS_TRUSTSTORE_PATH}"
+          -storepass "${ZTS_TRUSTSTORE_PASS}" -storetype JKS -alias "$(basename ${ca})";
+          done
+        env:
+        - name: ZTS_TRUSTSTORE_PATH
+          value: /opt/athenz/zts/var/certs/zts_truststore.jks
+        - name: ZTS_TRUSTSTORE_PASS
+          valueFrom:
+            secretKeyRef:
+              key: truststore
+              name: RELEASE-NAME-athenz-zts
+        image: docker.io/athenz/athenz-setup-env:latest
+        imagePullPolicy: IfNotPresent
+        name: tls-truststore
+        volumeMounts:
+        - mountPath: /opt/athenz/zts/var/tls/CAs
+          name: tls-ca
+        - mountPath: /opt/athenz/zts/var/certs
+          name: tls-stores
+      - command:
+        - /bin/sh
+        - -c
+        - openssl pkcs12 -export -noiter -nomaciter -out "${ZTS_SIGNER_KEYSTORE_PATH}"
+          -passout "pass:${ZTS_SIGNER_KEYSTORE_PASS}" -in "${ZTS_SIGNER_CERT_PATH}"
+          -inkey "${ZTS_SIGNER_CERT_KEY_PATH}"
+        env:
+        - name: ZTS_SIGNER_KEYSTORE_PATH
+          value: /opt/athenz/zts/var/certs/zts_signer_keystore.pkcs12
+        - name: ZTS_SIGNER_KEYSTORE_PASS
+          valueFrom:
+            secretKeyRef:
+              key: signerKeystore
+              name: RELEASE-NAME-athenz-zts
+        - name: ZTS_SIGNER_CERT_PATH
+          value: /opt/athenz/zts/var/signer/tls.crt
+        - name: ZTS_SIGNER_CERT_KEY_PATH
+          value: /opt/athenz/zts/var/signer/tls.key
+        image: docker.io/athenz/athenz-setup-env:latest
+        imagePullPolicy: IfNotPresent
+        name: signer-mtls-keystore
+        volumeMounts:
+        - mountPath: /opt/athenz/zts/var/signer
+          name: signer-mtls
+        - mountPath: /opt/athenz/zts/var/certs
+          name: signer-mtls-stores
+      - command:
+        - /bin/sh
+        - -c
+        - for ca in /opt/athenz/zts/var/signer/CAs/*.pem; do openssl x509 -outform
+          pem -in "${ca}" | keytool -importcert -noprompt -keystore "${ZTS_SIGNER_TRUSTSTORE_PATH}"
+          -storepass "${ZTS_SIGNER_TRUSTSTORE_PASS}" -storetype JKS -alias "$(basename
+          ${ca})"; done
+        env:
+        - name: ZTS_SIGNER_TRUSTSTORE_PATH
+          value: /opt/athenz/zts/var/certs/zts_signer_truststore.jks
+        - name: ZTS_SIGNER_TRUSTSTORE_PASS
+          valueFrom:
+            secretKeyRef:
+              key: signerTruststore
+              name: RELEASE-NAME-athenz-zts
+        image: docker.io/athenz/athenz-setup-env:latest
+        imagePullPolicy: IfNotPresent
+        name: signer-mtls-truststore
+        volumeMounts:
+        - mountPath: /opt/athenz/zts/var/signer/CAs
+          name: signer-mtls-ca
+        - mountPath: /opt/athenz/zts/var/certs
+          name: signer-mtls-stores
+      - command:
+        - /bin/sh
+        - -c
+        - openssl pkcs12 -export -noiter -nomaciter -out "${ZMS_CLIENT_KEYSTORE_PATH}"
+          -passout "pass:${ZMS_CLIENT_KEYSTORE_PASS}" -in "${ZMS_CLIENT_CERT_PATH}"
+          -inkey "${ZMS_CLIENT_CERT_KEY_PATH}"
+        env:
+        - name: ZMS_CLIENT_KEYSTORE_PATH
+          value: /opt/athenz/zts/var/certs/zms_client_keystore.pkcs12
+        - name: ZMS_CLIENT_KEYSTORE_PASS
+          valueFrom:
+            secretKeyRef:
+              key: zmsClientKeystore
+              name: RELEASE-NAME-athenz-zts
+        - name: ZMS_CLIENT_CERT_PATH
+          value: /opt/athenz/zts/var/zms-client/tls.crt
+        - name: ZMS_CLIENT_CERT_KEY_PATH
+          value: /opt/athenz/zts/var/zms-client/tls.key
+        image: docker.io/athenz/athenz-setup-env:latest
+        imagePullPolicy: IfNotPresent
+        name: zms-client-mtls-keystore
+        volumeMounts:
+        - mountPath: /opt/athenz/zts/var/zms-client
+          name: zms-client-mtls
+        - mountPath: /opt/athenz/zts/var/certs
+          name: zms-client-mtls-stores
+      - command:
+        - /bin/sh
+        - -c
+        - for ca in /opt/athenz/zts/var/zms-client/CAs/*.pem; do openssl x509 -outform
+          pem -in "${ca}" | keytool -importcert -noprompt -keystore "${ZMS_CLIENT_TRUSTSTORE_PATH}"
+          -storepass "${ZMS_CLIENT_TRUSTSTORE_PASS}" -storetype JKS -alias "$(basename
+          ${ca})"; done
+        env:
+        - name: ZMS_CLIENT_TRUSTSTORE_PATH
+          value: /opt/athenz/zts/var/certs/zms_client_truststore.jks
+        - name: ZMS_CLIENT_TRUSTSTORE_PASS
+          valueFrom:
+            secretKeyRef:
+              key: zmsClientTruststore
+              name: RELEASE-NAME-athenz-zts
+        image: docker.io/athenz/athenz-setup-env:latest
+        imagePullPolicy: IfNotPresent
+        name: zms-client-mtls-truststore
+        volumeMounts:
+        - mountPath: /opt/athenz/zts/var/zms-client/CAs
+          name: zms-client-mtls-ca
+        - mountPath: /opt/athenz/zts/var/certs
+          name: zms-client-mtls-stores
+      securityContext:
+        fsGroup: 1001
+        runAsGroup: 1001
+        runAsUser: 10001
+      volumes:
+      - configMap:
+          name: RELEASE-NAME-athenz-zts-config
+        name: config
+      - name: zts-key
+        secret:
+          items:
+          - key: zts_private.pem
+            mode: 400
+            path: zts_private.pem
+          secretName: RELEASE-NAME-athenz-zts
+      - name: tls
+        secret:
+          secretName: RELEASE-NAME-athenz-zts-tls
+      - name: tls-ca
+        secret:
+          secretName: RELEASE-NAME-athenz-zts-tls-ca
+      - name: signer-mtls
+        secret:
+          secretName: RELEASE-NAME-athenz-zts-signer
+      - name: signer-mtls-ca
+        secret:
+          secretName: RELEASE-NAME-athenz-zts-signer-ca
+      - name: zms-client-mtls
+        secret:
+          secretName: RELEASE-NAME-athenz-zts-zms
+      - name: zms-client-mtls-ca
+        secret:
+          secretName: RELEASE-NAME-athenz-zts-zms-ca
+      - emptyDir: {}
+        name: tls-stores
+      - emptyDir: {}
+        name: signer-mtls-stores
+      - emptyDir: {}
+        name: zms-client-mtls-stores
+      - emptyDir: {}
+        name: log
+      - emptyDir: {}
+        name: change-log-store

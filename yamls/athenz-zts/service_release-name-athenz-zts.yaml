@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: athenz-zts
+    chart: athenz-zts-1.0.0
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-athenz-zts
+spec:
+  ports:
+  - name: zts
+    port: 4443
+    protocol: TCP
+    targetPort: zts
+  selector:
+    app: athenz-zts
+    release: RELEASE-NAME
+  type: LoadBalancer

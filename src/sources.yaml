@@ -5,6 +5,10 @@
 - name: argo-cd
   repo: https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
   type: raw
+- name: athenz-zms
+  repo: https://raw.githubusercontent.com/AthenZ/athenz/master/kubernetes/charts
+- name: athenz-zts
+  repo: https://raw.githubusercontent.com/AthenZ/athenz/master/kubernetes/charts
 - name: cassandra
   repo: https://charts.bitnami.com/bitnami
 - name: cert-manager
