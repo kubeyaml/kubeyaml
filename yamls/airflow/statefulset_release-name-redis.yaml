@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    chart: airflow-1.4.0
+    component: redis
+    heritage: Helm
+    release: RELEASE-NAME
+    tier: airflow
+  name: RELEASE-NAME-redis
+spec:
+  selector:
+    matchLabels:
+      component: redis
+      release: RELEASE-NAME
+      tier: airflow
+  serviceName: RELEASE-NAME-redis
+  template:
+    metadata:
+      annotations:
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
+      labels:
+        component: redis
+        release: RELEASE-NAME
+        tier: airflow
+    spec:
+      affinity: {}
+      containers:
+      - args:
+        - -c
+        - redis-server --requirepass ${REDIS_PASSWORD}
+        command:
+        - /bin/sh
+        env:
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: RELEASE-NAME-redis-password
+        image: redis:6-buster
+        imagePullPolicy: IfNotPresent
+        name: redis
+        ports:
+        - containerPort: 6379
+          name: redis-db
+        resources: {}
+        volumeMounts:
+        - mountPath: /data
+          name: redis-db
+      nodeSelector: {}
+      serviceAccountName: RELEASE-NAME-airflow-redis
+      tolerations: []
+  volumeClaimTemplates:
+  - metadata:
+      name: redis-db
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 1Gi

@@ -16,7 +16,7 @@ select PACKAGE in $PACKAGES; do
     python3 render_pacakge.py $PACKAGE > _temp/kustomization.yaml
     kubectl kustomize --enable-helm _temp/ -o _temp/_rendered/
     
-    # exit
+    exit
 
     cd _temp/_rendered/
     FILES=$(ls *.yaml)

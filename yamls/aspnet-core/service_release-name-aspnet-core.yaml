@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations: null
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: aspnet-core
+    helm.sh/chart: aspnet-core-3.1.0
+  name: RELEASE-NAME-aspnet-core
+spec:
+  ports:
+  - name: http
+    nodePort: null
+    port: 80
+    targetPort: http
+  selector:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/name: aspnet-core
+  type: ClusterIP

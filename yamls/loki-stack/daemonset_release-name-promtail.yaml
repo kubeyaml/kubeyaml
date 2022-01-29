@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  annotations: {}
+  labels:
+    app: promtail
+    chart: promtail-2.2.0
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-promtail
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: promtail
+      release: RELEASE-NAME
+  template:
+    metadata:
+      annotations:
+        checksum/config: 81985e6edb592568080ee85db59b747664f91d75f2b452589c5a5659928f1076
+        prometheus.io/port: http-metrics
+        prometheus.io/scrape: "true"
+      labels:
+        app: promtail
+        release: RELEASE-NAME
+    spec:
+      affinity: {}
+      containers:
+      - args:
+        - -config.file=/etc/promtail/promtail.yaml
+        - -client.url=http://RELEASE-NAME-loki:3100/loki/api/v1/push
+        env:
+        - name: HOSTNAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        image: grafana/promtail:2.1.0
+        imagePullPolicy: IfNotPresent
+        name: promtail
+        ports:
+        - containerPort: 3101
+          name: http-metrics
+        readinessProbe:
+          failureThreshold: 5
+          httpGet:
+            path: /ready
+            port: http-metrics
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources: {}
+        securityContext:
+          readOnlyRootFilesystem: true
+          runAsGroup: 0
+          runAsUser: 0
+        volumeMounts:
+        - mountPath: /etc/promtail
+          name: config
+        - mountPath: /run/promtail
+          name: run
+        - mountPath: /var/lib/docker/containers
+          name: docker
+          readOnly: true
+        - mountPath: /var/log/pods
+          name: pods
+          readOnly: true
+      nodeSelector: {}
+      serviceAccountName: RELEASE-NAME-promtail
+      tolerations:
+      - effect: NoSchedule
+        key: node-role.kubernetes.io/master
+        operator: Exists
+      volumes:
+      - configMap:
+          name: RELEASE-NAME-promtail
+        name: config
+      - hostPath:
+          path: /run/promtail
+        name: run
+      - hostPath:
+          path: /var/lib/docker/containers
+        name: docker
+      - hostPath:
+          path: /var/log/pods
+        name: pods
+  updateStrategy: {}

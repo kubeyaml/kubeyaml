@@ -1,0 +1,100 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: tensorflow-resnet
+    helm.sh/chart: tensorflow-resnet-3.4.2
+  name: RELEASE-NAME-tensorflow-resnet
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: RELEASE-NAME
+      app.kubernetes.io/name: tensorflow-resnet
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: tensorflow-resnet
+        helm.sh/chart: tensorflow-resnet-3.4.2
+    spec:
+      affinity:
+        nodeAffinity: null
+        podAffinity: null
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/component: master
+                  app.kubernetes.io/instance: RELEASE-NAME
+                  app.kubernetes.io/name: tensorflow-resnet
+              namespaces:
+              - default
+              topologyKey: kubernetes.io/hostname
+            weight: 1
+      containers:
+      - env:
+        - name: TENSORFLOW_SERVING_MODEL_NAME
+          value: resnet
+        - name: TENSORFLOW_SERVING_PORT_NUMBER
+          value: ""
+        - name: TENSORFLOW_SERVING_REST_API_PORT_NUMBER
+          value: ""
+        - name: TENSORFLOW_SERVING_ENABLE_MONITORING
+          value: "no"
+        image: docker.io/bitnami/tensorflow-serving:2.7.0-debian-10-r64
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 6
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          successThreshold: 1
+          tcpSocket:
+            port: tf-serving
+          timeoutSeconds: 5
+        name: tensorflow-serving
+        ports:
+        - containerPort: 8500
+          name: tf-serving
+        - containerPort: 8501
+          name: tf-serving-api
+        readinessProbe:
+          failureThreshold: 6
+          initialDelaySeconds: 15
+          periodSeconds: 5
+          successThreshold: 1
+          tcpSocket:
+            port: tf-serving
+          timeoutSeconds: 5
+        resources:
+          limits: {}
+          requests: {}
+        volumeMounts:
+        - mountPath: /bitnami/model-data
+          name: seed
+      initContainers:
+      - command:
+        - /bin/sh
+        - -c
+        - |
+          if [ -f /seed/.initialized ]; then
+            echo "Already initialized. Skipping"
+          else
+            curl -o /seed/resnet_50_classification_1.tar.gz https://storage.googleapis.com/tfhub-modules/tensorflow/resnet_50/classification/1.tar.gz
+            cd /seed/ && mkdir 1 && tar -xzf resnet_50_classification_1.tar.gz -C 1
+            rm resnet_50_classification_1.tar.gz
+            touch /seed/.initialized
+          fi
+        image: docker.io/bitnami/tensorflow-resnet:2.7.0-debian-10-r10
+        imagePullPolicy: IfNotPresent
+        name: seed
+        volumeMounts:
+        - mountPath: /seed
+          name: seed
+      volumes:
+      - emptyDir: {}
+        name: seed

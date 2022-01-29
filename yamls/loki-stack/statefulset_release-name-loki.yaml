@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  annotations: {}
+  labels:
+    app: loki
+    chart: loki-2.8.4
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-loki
+  namespace: default
+spec:
+  podManagementPolicy: OrderedReady
+  replicas: 1
+  selector:
+    matchLabels:
+      app: loki
+      release: RELEASE-NAME
+  serviceName: RELEASE-NAME-loki-headless
+  template:
+    metadata:
+      annotations:
+        checksum/config: 2768159785cc540da0f4a3ce9b541c606b1dcfa04d2bbaf1fb0c66e439e6b59a
+        prometheus.io/port: http-metrics
+        prometheus.io/scrape: "true"
+      labels:
+        app: loki
+        name: loki
+        release: RELEASE-NAME
+    spec:
+      affinity: {}
+      containers:
+      - args:
+        - -config.file=/etc/loki/loki.yaml
+        env: null
+        image: grafana/loki:2.4.1
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /ready
+            port: http-metrics
+          initialDelaySeconds: 45
+        name: loki
+        ports:
+        - containerPort: 3100
+          name: http-metrics
+          protocol: TCP
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: http-metrics
+          initialDelaySeconds: 45
+        resources: {}
+        securityContext:
+          readOnlyRootFilesystem: true
+        volumeMounts:
+        - mountPath: /etc/loki
+          name: config
+        - mountPath: /data
+          name: storage
+          subPath: null
+      initContainers: []
+      nodeSelector: {}
+      securityContext:
+        fsGroup: 10001
+        runAsGroup: 10001
+        runAsNonRoot: true
+        runAsUser: 10001
+      serviceAccountName: RELEASE-NAME-loki
+      terminationGracePeriodSeconds: 4800
+      tolerations: []
+      volumes:
+      - name: config
+        secret:
+          secretName: RELEASE-NAME-loki
+      - emptyDir: {}
+        name: storage
+  updateStrategy:
+    type: RollingUpdate

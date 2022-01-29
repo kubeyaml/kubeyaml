@@ -1,0 +1,19 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    app: promtail
+    chart: promtail-2.2.0
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-promtail
+  namespace: default
+rules:
+- apiGroups:
+  - extensions
+  resourceNames:
+  - RELEASE-NAME-promtail
+  resources:
+  - podsecuritypolicies
+  verbs:
+  - use

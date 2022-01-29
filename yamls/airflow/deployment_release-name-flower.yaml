@@ -1,0 +1,110 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    chart: airflow-1.4.0
+    component: flower
+    heritage: Helm
+    release: RELEASE-NAME
+    tier: airflow
+  name: RELEASE-NAME-flower
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: flower
+      release: RELEASE-NAME
+      tier: airflow
+  template:
+    metadata:
+      annotations:
+        checksum/airflow-config: 708936888fa3858db029c48b74c491386b92b6f1b4a6c41ae7476b17dc274f10
+        checksum/flower-secret: 636da6aef52b0ab4a7d967a0eca8a89d7297308d564677a473605a5bab7e2d74
+      labels:
+        component: flower
+        release: RELEASE-NAME
+        tier: airflow
+    spec:
+      affinity: {}
+      containers:
+      - args:
+        - bash
+        - -c
+        - |-
+          exec \
+          airflow celery flower
+        env:
+        - name: AIRFLOW__CORE__FERNET_KEY
+          valueFrom:
+            secretKeyRef:
+              key: fernet-key
+              name: RELEASE-NAME-fernet-key
+        - name: AIRFLOW__CORE__SQL_ALCHEMY_CONN
+          valueFrom:
+            secretKeyRef:
+              key: connection
+              name: RELEASE-NAME-airflow-metadata
+        - name: AIRFLOW_CONN_AIRFLOW_DB
+          valueFrom:
+            secretKeyRef:
+              key: connection
+              name: RELEASE-NAME-airflow-metadata
+        - name: AIRFLOW__WEBSERVER__SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              key: webserver-secret-key
+              name: RELEASE-NAME-webserver-secret-key
+        - name: AIRFLOW__CELERY__CELERY_RESULT_BACKEND
+          valueFrom:
+            secretKeyRef:
+              key: connection
+              name: RELEASE-NAME-airflow-result-backend
+        - name: AIRFLOW__CELERY__RESULT_BACKEND
+          valueFrom:
+            secretKeyRef:
+              key: connection
+              name: RELEASE-NAME-airflow-result-backend
+        - name: AIRFLOW__CELERY__BROKER_URL
+          valueFrom:
+            secretKeyRef:
+              key: connection
+              name: RELEASE-NAME-broker-url
+        image: apache/airflow:2.2.3
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          exec:
+            command:
+            - curl
+            - localhost:5555
+          failureThreshold: 10
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        name: flower
+        ports:
+        - containerPort: 5555
+          name: flower-ui
+        readinessProbe:
+          exec:
+            command:
+            - curl
+            - localhost:5555
+          failureThreshold: 10
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        resources: {}
+        volumeMounts:
+        - mountPath: /opt/airflow/airflow.cfg
+          name: config
+          readOnly: true
+          subPath: airflow.cfg
+      nodeSelector: {}
+      restartPolicy: Always
+      securityContext:
+        fsGroup: 0
+        runAsUser: 50000
+      serviceAccountName: RELEASE-NAME-airflow-flower
+      tolerations: []
+      volumes:
+      - configMap:
+          name: RELEASE-NAME-airflow-config
+        name: config

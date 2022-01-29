@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: tensorflow-resnet
+    helm.sh/chart: tensorflow-resnet-3.4.2
+  name: RELEASE-NAME-tensorflow-resnet
+spec:
+  ports:
+  - name: tf-serving
+    port: 8500
+    targetPort: tf-serving
+  - name: tf-serving-api
+    port: 8501
+    targetPort: tf-serving-api
+  selector:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/name: tensorflow-resnet
+  type: LoadBalancer

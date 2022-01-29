@@ -1,0 +1,26 @@
+apiVersion: v1
+data:
+  haproxy.cfg: |
+    global
+      log stdout format raw local0
+      maxconn 1024
+    defaults
+      log global
+      timeout client 60s
+      timeout connect 60s
+      timeout server 60s
+    frontend fe_main
+      bind :8080
+      default_backend be_main
+    backend be_main
+      server web1 10.0.0.1:8080 check
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/component: haproxy
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: haproxy
+    helm.sh/chart: haproxy-0.3.1
+  name: RELEASE-NAME-haproxy
+  namespace: default

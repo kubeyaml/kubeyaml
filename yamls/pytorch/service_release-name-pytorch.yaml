@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/component: master
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: pytorch
+    helm.sh/chart: pytorch-2.3.24
+  name: RELEASE-NAME-pytorch
+spec:
+  ports:
+  - name: pytorch
+    nodePort: null
+    port: 49875
+    targetPort: pytorch
+  selector:
+    app.kubernetes.io/component: master
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/name: pytorch
+  type: ClusterIP

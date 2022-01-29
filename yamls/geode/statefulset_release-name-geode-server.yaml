@@ -1,0 +1,190 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app.kubernetes.io/component: server
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: geode
+    helm.sh/chart: geode-0.4.4
+  name: RELEASE-NAME-geode-server
+  namespace: default
+spec:
+  podManagementPolicy: OrderedReady
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: server
+      app.kubernetes.io/instance: RELEASE-NAME
+      app.kubernetes.io/name: geode
+  serviceName: RELEASE-NAME-geode-server-hl
+  template:
+    metadata:
+      annotations:
+        checksum/auth-secret: fddb560753ee960fa6faa2d8d588c45751e8f95244a23e969ea665f65d102759
+      labels:
+        app.kubernetes.io/component: server
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: geode
+        helm.sh/chart: geode-0.4.4
+    spec:
+      affinity:
+        nodeAffinity: null
+        podAffinity: null
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/component: server
+                  app.kubernetes.io/instance: RELEASE-NAME
+                  app.kubernetes.io/name: geode
+              namespaces:
+              - default
+              topologyKey: kubernetes.io/hostname
+            weight: 1
+      containers:
+      - args:
+        - -ec
+        - "/opt/bitnami/scripts/geode/entrypoint.sh /opt/bitnami/scripts/geode/run.sh
+          \n"
+        command:
+        - /bin/bash
+        env:
+        - name: BITNAMI_DEBUG
+          value: "false"
+        - name: MY_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: GEODE_NODE_NAME
+          value: $(MY_POD_NAME)
+        - name: GEODE_NODE_TYPE
+          value: server
+        - name: GEODE_ADVERTISED_HOSTNAME
+          value: $(MY_POD_NAME).RELEASE-NAME-geode-server-hl.default.svc.cluster.local
+        - name: GEODE_LOCATORS
+          value: RELEASE-NAME-geode-locator-0.RELEASE-NAME-geode-locator-hl.default.svc.cluster.local[10334],RELEASE-NAME-geode-locator-1.RELEASE-NAME-geode-locator-hl.default.svc.cluster.local[10334]
+        - name: GEODE_SERVER_PORT_NUMBER
+          value: "40404"
+        - name: GEODE_HTTP_PORT_NUMBER
+          value: "7070"
+        - name: GEODE_RMI_PORT_NUMBER
+          value: "1099"
+        - name: GEODE_ENABLE_METRICS
+          value: "no"
+        - name: GEODE_LOG_LEVEL
+          value: info
+        - name: GEODE_ENABLE_SECURITY
+          value: "yes"
+        - name: GEODE_SECURITY_MANAGER
+          value: org.apache.geode.examples.security.ExampleSecurityManager
+        - name: GEODE_SECURITY_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: RELEASE-NAME-geode-auth
+        - name: GEODE_SECURITY_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: RELEASE-NAME-geode-auth
+        image: docker.io/bitnami/geode:1.14.3-debian-10-r0
+        imagePullPolicy: IfNotPresent
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - /bin/bash
+              - -ec
+              - |
+                gfsh -e "connect --locator=RELEASE-NAME-geode-locator.default.svc.cluster.local[10334] --user=$GEODE_SECURITY_USERNAME --password=$GEODE_SECURITY_PASSWORD" -e "restore redundancy"
+        livenessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 40
+          periodSeconds: 10
+          successThreshold: 1
+          tcpSocket:
+            port: server
+          timeoutSeconds: 10
+        name: geode
+        ports:
+        - containerPort: 40404
+          name: server
+        - containerPort: 7070
+          name: http
+        - containerPort: 1099
+          name: rmi
+        readinessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 40
+          periodSeconds: 10
+          successThreshold: 1
+          tcpSocket:
+            port: server
+          timeoutSeconds: 10
+        resources:
+          limits: {}
+          requests: {}
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+        volumeMounts:
+        - mountPath: /bitnami/geode
+          name: data
+      initContainers:
+      - args:
+        - -ec
+        - |
+          . /opt/bitnami/scripts/libgeode.sh
+          declare -a locators
+          read -r -a locators <<< "$(tr ',;' ' ' <<< "${GEODE_LOCATORS/%,/}")"
+          for l in "${locators[@]}"; do
+              geode_wait_for_locator_connection "$l" "${GEODE_SECURITY_USERNAME:-}" "${GEODE_SECURITY_PASSWORD:-}"
+          done
+        command:
+        - /bin/bash
+        env:
+        - name: BITNAMI_DEBUG
+          value: "false"
+        - name: GEODE_LOCATORS
+          value: RELEASE-NAME-geode-locator-0.RELEASE-NAME-geode-locator-hl.default.svc.cluster.local[10334],RELEASE-NAME-geode-locator-1.RELEASE-NAME-geode-locator-hl.default.svc.cluster.local[10334]
+        - name: GEODE_SECURITY_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: RELEASE-NAME-geode-auth
+        - name: GEODE_SECURITY_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: RELEASE-NAME-geode-auth
+        image: docker.io/bitnami/geode:1.14.3-debian-10-r0
+        imagePullPolicy: IfNotPresent
+        name: wait-for-locators
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+      securityContext:
+        fsGroup: 1001
+        sysctls:
+        - name: net.ipv4.tcp_syncookies
+          value: "0"
+      serviceAccountName: RELEASE-NAME-geode
+      volumes: null
+  updateStrategy:
+    type: RollingUpdate
+  volumeClaimTemplates:
+  - metadata:
+      labels:
+        app.kubernetes.io/component: server
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/name: geode
+      name: data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 8Gi

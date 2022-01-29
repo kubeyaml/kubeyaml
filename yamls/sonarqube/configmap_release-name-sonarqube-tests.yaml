@@ -1,0 +1,14 @@
+apiVersion: v1
+data:
+  run.sh: |-
+    @test "Testing Sonarqube UI is accessible" {
+      curl --connect-timeout 5 --retry 12 --retry-delay 1 --retry-max-time 60 RELEASE-NAME-sonarqube:9000/api/system/status
+    }
+kind: ConfigMap
+metadata:
+  labels:
+    app: sonarqube
+    chart: sonarqube-1.2.5_179
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-sonarqube-tests

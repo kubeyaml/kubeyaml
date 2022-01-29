@@ -1,0 +1,17 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app: promtail
+    chart: promtail-2.2.0
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-promtail-clusterrolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: RELEASE-NAME-promtail-clusterrole
+subjects:
+- kind: ServiceAccount
+  name: RELEASE-NAME-promtail
+  namespace: default

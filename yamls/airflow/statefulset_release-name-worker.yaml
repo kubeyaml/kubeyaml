@@ -1,0 +1,189 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    chart: airflow-1.4.0
+    component: worker
+    heritage: Helm
+    release: RELEASE-NAME
+    tier: airflow
+  name: RELEASE-NAME-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: worker
+      release: RELEASE-NAME
+      tier: airflow
+  serviceName: RELEASE-NAME-worker
+  template:
+    metadata:
+      annotations:
+        checksum/airflow-config: 708936888fa3858db029c48b74c491386b92b6f1b4a6c41ae7476b17dc274f10
+        checksum/extra-configmaps: 2e44e493035e2f6a255d08f8104087ff10d30aef6f63176f1b18f75f73295598
+        checksum/extra-secrets: bb91ef06ddc31c0c5a29973832163d8b0b597812a793ef911d33b622bc9d1655
+        checksum/kerberos-keytab: 18b80c0921e5c0af1e63eca1c3ce3fbc388d006bd2db5a7ab512dc8a563b6443
+        checksum/metadata-secret: 7c54201013e432b164782aa58433e49a9cd14d0581827b7964e495ccdbd010db
+        checksum/pgbouncer-config-secret: da52bd1edfe820f0ddfacdebb20a4cc6407d296ee45bcb500a6407e2261a5ba2
+        checksum/result-backend-secret: dc675ec58df000fc4a4e236e2c8c990ebe2f615a7567bcc430b3cd65920f09e9
+        checksum/webserver-secret-key: 736aa6a945ec9679aa217aea62f1a5fd06c0255f83169d4eacba0ed1bb0e4896
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
+      labels:
+        component: worker
+        release: RELEASE-NAME
+        tier: airflow
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  component: worker
+              topologyKey: kubernetes.io/hostname
+            weight: 100
+      containers:
+      - args:
+        - bash
+        - -c
+        - |-
+          exec \
+          airflow celery worker
+        env:
+        - name: DUMB_INIT_SETSID
+          value: "0"
+        - name: AIRFLOW__CORE__FERNET_KEY
+          valueFrom:
+            secretKeyRef:
+              key: fernet-key
+              name: RELEASE-NAME-fernet-key
+        - name: AIRFLOW__CORE__SQL_ALCHEMY_CONN
+          valueFrom:
+            secretKeyRef:
+              key: connection
+              name: RELEASE-NAME-airflow-metadata
+        - name: AIRFLOW_CONN_AIRFLOW_DB
+          valueFrom:
+            secretKeyRef:
+              key: connection
+              name: RELEASE-NAME-airflow-metadata
+        - name: AIRFLOW__WEBSERVER__SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              key: webserver-secret-key
+              name: RELEASE-NAME-webserver-secret-key
+        - name: AIRFLOW__CELERY__CELERY_RESULT_BACKEND
+          valueFrom:
+            secretKeyRef:
+              key: connection
+              name: RELEASE-NAME-airflow-result-backend
+        - name: AIRFLOW__CELERY__RESULT_BACKEND
+          valueFrom:
+            secretKeyRef:
+              key: connection
+              name: RELEASE-NAME-airflow-result-backend
+        - name: AIRFLOW__CELERY__BROKER_URL
+          valueFrom:
+            secretKeyRef:
+              key: connection
+              name: RELEASE-NAME-broker-url
+        envFrom: []
+        image: apache/airflow:2.2.3
+        imagePullPolicy: IfNotPresent
+        name: worker
+        ports:
+        - containerPort: 8793
+          name: worker-logs
+        resources: {}
+        volumeMounts:
+        - mountPath: /opt/airflow/logs
+          name: logs
+        - mountPath: /opt/airflow/airflow.cfg
+          name: config
+          readOnly: true
+          subPath: airflow.cfg
+        - mountPath: /opt/airflow/config/airflow_local_settings.py
+          name: config
+          readOnly: true
+          subPath: airflow_local_settings.py
+      - args:
+        - bash
+        - /clean-logs
+        env:
+        - name: AIRFLOW__LOG_RETENTION_DAYS
+          value: "15"
+        image: apache/airflow:2.2.3
+        imagePullPolicy: IfNotPresent
+        name: worker-log-groomer
+        resources: {}
+        volumeMounts:
+        - mountPath: /opt/airflow/logs
+          name: logs
+      initContainers:
+      - args:
+        - airflow
+        - db
+        - check-migrations
+        - --migration-wait-timeout=60
+        env:
+        - name: AIRFLOW__CORE__FERNET_KEY
+          valueFrom:
+            secretKeyRef:
+              key: fernet-key
+              name: RELEASE-NAME-fernet-key
+        - name: AIRFLOW__CORE__SQL_ALCHEMY_CONN
+          valueFrom:
+            secretKeyRef:
+              key: connection
+              name: RELEASE-NAME-airflow-metadata
+        - name: AIRFLOW_CONN_AIRFLOW_DB
+          valueFrom:
+            secretKeyRef:
+              key: connection
+              name: RELEASE-NAME-airflow-metadata
+        - name: AIRFLOW__WEBSERVER__SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              key: webserver-secret-key
+              name: RELEASE-NAME-webserver-secret-key
+        - name: AIRFLOW__CELERY__CELERY_RESULT_BACKEND
+          valueFrom:
+            secretKeyRef:
+              key: connection
+              name: RELEASE-NAME-airflow-result-backend
+        - name: AIRFLOW__CELERY__RESULT_BACKEND
+          valueFrom:
+            secretKeyRef:
+              key: connection
+              name: RELEASE-NAME-airflow-result-backend
+        - name: AIRFLOW__CELERY__BROKER_URL
+          valueFrom:
+            secretKeyRef:
+              key: connection
+              name: RELEASE-NAME-broker-url
+        envFrom: []
+        image: apache/airflow:2.2.3
+        imagePullPolicy: IfNotPresent
+        name: wait-for-airflow-migrations
+        resources: {}
+      nodeSelector: {}
+      restartPolicy: Always
+      securityContext:
+        fsGroup: 0
+        runAsUser: 50000
+      serviceAccountName: RELEASE-NAME-airflow-worker
+      terminationGracePeriodSeconds: 600
+      tolerations: []
+      volumes:
+      - configMap:
+          name: RELEASE-NAME-airflow-config
+        name: config
+  volumeClaimTemplates:
+  - metadata:
+      name: logs
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 100Gi

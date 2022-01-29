@@ -1,0 +1,11 @@
+apiVersion: v1
+data:
+  install_plugins.sh: ""
+kind: ConfigMap
+metadata:
+  labels:
+    app: sonarqube
+    chart: sonarqube-1.2.5_179
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-sonarqube-install-plugins

@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    chart: airflow-1.4.0
+    component: worker
+    heritage: Helm
+    release: RELEASE-NAME
+    tier: airflow
+  name: RELEASE-NAME-worker
+spec:
+  clusterIP: None
+  ports:
+  - name: worker-logs
+    port: 8793
+    protocol: TCP
+    targetPort: 8793
+  selector:
+    component: worker
+    release: RELEASE-NAME
+    tier: airflow

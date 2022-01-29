@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/component: locator
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: geode
+    helm.sh/chart: geode-0.4.4
+  name: RELEASE-NAME-geode-locator-hl
+  namespace: default
+spec:
+  clusterIP: None
+  ports:
+  - name: locator
+    port: 10334
+    targetPort: locator
+  - name: http
+    port: 7070
+    targetPort: http
+  - name: rmi
+    port: 1099
+    targetPort: rmi
+  publishNotReadyAddresses: true
+  selector:
+    app.kubernetes.io/component: locator
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/name: geode
+  type: ClusterIP

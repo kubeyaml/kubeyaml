@@ -1,0 +1,119 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: ejbca
+    helm.sh/chart: ejbca-5.1.2
+  name: RELEASE-NAME-ejbca
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: RELEASE-NAME
+      app.kubernetes.io/name: ejbca
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        checksum/secret: 59f2b8b422d213e04920638e22dc8f97a5e9e2454cd951fdedd98ea1747381ac
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: ejbca
+        helm.sh/chart: ejbca-5.1.2
+    spec:
+      affinity:
+        nodeAffinity: null
+        podAffinity: null
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: RELEASE-NAME
+                  app.kubernetes.io/name: ejbca
+              namespaces:
+              - default
+              topologyKey: kubernetes.io/hostname
+            weight: 1
+      containers:
+      - env:
+        - name: BITNAMI_DEBUG
+          value: "false"
+        - name: EJBCA_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: ejbca-admin-password
+              name: RELEASE-NAME-ejbca
+        - name: EJBCA_DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: mariadb-password
+              name: RELEASE-NAME-mariadb
+        - name: EJBCA_ADMIN_USERNAME
+          value: bitnami
+        - name: EJBCA_DATABASE_HOST
+          value: RELEASE-NAME-mariadb
+        - name: EJBCA_DATABASE_PORT
+          value: "3306"
+        - name: EJBCA_DATABASE_NAME
+          value: bitnami_ejbca
+        - name: EJBCA_DATABASE_USERNAME
+          value: bn_ejbca
+        - name: EJBCA_HTTP_PORT_NUMBER
+          value: "8080"
+        - name: EJBCA_HTTPS_PORT_NUMBER
+          value: null
+        - name: EJBCA_HTTPS_ADVERTISED_PORT_NUMBER
+          value: "443"
+        - name: EJBCA_CA_NAME
+          value: ManagementCA
+        envFrom: null
+        image: docker.io/bitnami/ejbca:7.4.3-2-debian-10-r92
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 6
+          httpGet:
+            path: /ejbca
+            port: http
+          initialDelaySeconds: 500
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        name: ejbca
+        ports:
+        - containerPort: 8080
+          name: http
+        - containerPort: 8443
+          name: https
+        readinessProbe:
+          failureThreshold: 6
+          httpGet:
+            path: /ejbca
+            port: http
+          initialDelaySeconds: 500
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        resources:
+          limits: {}
+          requests:
+            cpu: 300m
+            memory: 512Mi
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+        volumeMounts:
+        - mountPath: /bitnami/wildfly
+          name: ejbca-data
+          subPath: wildfly
+      priorityClassName: ""
+      securityContext:
+        fsGroup: 1001
+      volumes:
+      - name: ejbca-data
+        persistentVolumeClaim:
+          claimName: RELEASE-NAME-ejbca

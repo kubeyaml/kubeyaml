@@ -1,10 +1,17 @@
+- name: airflow
+  repo: https://airflow.apache.org/
 - name: alertmanager
   repo: https://prometheus-community.github.io/helm-charts
+- name: apache
+  repo: https://charts.bitnami.com/bitnami
 - name: apertium
   repo: https://helm-charts.wikimedia.org/stable/
 - name: argo-cd
-  resources:
-  - https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+  repo: https://argoproj.github.io/argo-helm
+- name: argo-workflows
+  repo: https://argoproj.github.io/argo-helm
+- name: aspnet-core
+  repo: https://charts.bitnami.com/bitnami
 - name: athenz-zms
   repo: https://raw.githubusercontent.com/AthenZ/athenz/master/kubernetes/charts
 - name: athenz-zts
@@ -13,8 +20,8 @@
   repo: https://charts.bitnami.com/bitnami
 - name: cassandra-example
   resources:
-  - https://raw.githubusercontent.com/kubernetes/website/main/content/en/examples/application/cassandra/cassandra-service.yaml
-  - https://raw.githubusercontent.com/kubernetes/website/main/content/en/examples/application/cassandra/cassandra-statefulset.yaml
+  - https://raw.githubusercontent.com/kubernetes/examples/master/cassandra/cassandra-service.yaml
+  - https://raw.githubusercontent.com/kubernetes/examples/master/cassandra/cassandra-statefulset.yaml
 - name: cert-manager
   repo: https://charts.jetstack.io
 - name: chartmuseum
@@ -51,8 +58,12 @@
       DRONE_SERVER_HOST: drone.example.com
 - name: drupal
   repo: https://charts.bitnami.com/bitnami
+- name: ejbca
+  repo: https://charts.bitnami.com/bitnami
 - name: elasticsearch
   repo: https://helm.elastic.co
+- name: etcd
+  repo: https://charts.bitnami.com/bitnami
 - name: eventrouter
   repo: https://helm-charts.wikimedia.org/stable/
 - name: external-dns
@@ -67,6 +78,10 @@
   repo: https://fluent.github.io/helm-charts
 - name: fluentd
   repo: https://fluent.github.io/helm-charts
+- name: geode
+  repo: https://charts.bitnami.com/bitnami
+- name: ghost
+  repo: https://charts.bitnami.com/bitnami
 - name: gitlab
   repo: https://charts.gitlab.io/
   valuesInline:
@@ -76,6 +91,8 @@
   repo: https://grafana.github.io/helm-charts
 - name: graylog
   repo: https://charts.kong-z.com
+- name: haproxy
+  repo: https://charts.bitnami.com/bitnami
 - name: harbor
   repo: https://helm.goharbor.io
 - name: hazelcast
@@ -122,6 +139,9 @@
   repo: https://helm.elastic.co
 - name: knative
   repo: https://charts.gitlab.io/
+- name: knative-operator
+  resources:
+  - https://github.com/knative/operator/releases/latest/download/operator.yaml
 - name: kong
   repo: https://charts.bitnami.com/bitnami
 - name: kube-prometheus-stack
@@ -133,6 +153,10 @@
 - name: logstash
   repo: https://helm.elastic.co
 - name: loki
+  repo: https://grafana.github.io/helm-charts
+- name: loki-distributed
+  repo: https://grafana.github.io/helm-charts
+- name: loki-stack
   repo: https://grafana.github.io/helm-charts
 - name: magento
   repo: https://charts.bitnami.com/bitnami
@@ -169,7 +193,15 @@
   repo: https://charts.min.io/
 - name: mongodb
   repo: https://charts.bitnami.com/bitnami
+- name: mongodb-example
+  resources:
+  - https://raw.githubusercontent.com/kubernetes/website/main/content/en/examples/application/mongodb/mongo-deployment.yaml
+  - https://raw.githubusercontent.com/kubernetes/website/main/content/en/examples/application/mongodb/mongo-service.yaml
+- name: mongodb-sharded
+  repo: https://charts.bitnami.com/bitnami
 - name: moodle
+  repo: https://charts.bitnami.com/bitnami
+- name: mxnet
   repo: https://charts.bitnami.com/bitnami
 - name: mysql
   repo: https://charts.bitnami.com/bitnami
@@ -177,6 +209,10 @@
   repo: https://nats-io.github.io/k8s/helm/charts/
 - name: nginx
   repo: https://charts.bitnami.com/bitnami
+- name: nginx-example
+  resources:
+  - https://raw.githubusercontent.com/kubernetes/website/main/content/en/examples/application/nginx/nginx-deployment.yaml
+  - https://raw.githubusercontent.com/kubernetes/website/main/content/en/examples/application/nginx/nginx-svc.yaml
 - name: node-problem-detector
   repo: https://charts.deliveryhero.io/
 - name: nuclio
@@ -184,6 +220,8 @@
 - name: oauth2-proxy
   repo: https://oauth2-proxy.github.io/manifests
 - name: odoo
+  repo: https://charts.bitnami.com/bitnami
+- name: opencart
   repo: https://charts.bitnami.com/bitnami
 - name: opensearch
   repo: https://opensearch-project.github.io/helm-charts/
@@ -205,9 +243,13 @@
   repo: https://prometheus-community.github.io/helm-charts
 - name: promtail
   repo: https://grafana.github.io/helm-charts
+- name: pytorch
+  repo: https://charts.bitnami.com/bitnami
 - name: rabbitmq
   repo: https://charts.bitnami.com/bitnami
 - name: redis
+  repo: https://charts.bitnami.com/bitnami
+- name: redis-cluster
   repo: https://charts.bitnami.com/bitnami
 - name: reloader
   repo: https://stakater.github.io/stakater-charts
@@ -224,7 +266,24 @@
   - https://raw.githubusercontent.com/SeleniumHQ/docker-selenium/trunk/k8s-deployment-full-grid.yaml
 - name: solr
   repo: https://solr.apache.org/charts
+- name: sonarqube
+  repo: https://SonarSource.github.io/helm-chart-sonarqube
 - name: spark
+  repo: https://charts.bitnami.com/bitnami
+- name: spring-cloud-dataflow
+  repo: https://charts.bitnami.com/bitnami
+- name: suitecrm
+  repo: https://charts.bitnami.com/bitnami
+- name: tekton
+  resources:
+  - https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml
+- name: tempo
+  repo: https://grafana.github.io/helm-charts
+- name: tempo-distributed
+  repo: https://grafana.github.io/helm-charts
+- name: tensorflow-resnet
+  repo: https://charts.bitnami.com/bitnami
+- name: testlink
   repo: https://charts.bitnami.com/bitnami
 - name: thanos
   repo: https://charts.bitnami.com/bitnami
@@ -256,3 +315,8 @@
   valuesInline:
     xray:
       jfrogUrl: "JFROG-URL"
+- name: zookeeper
+  repo: https://charts.bitnami.com/bitnami
+- name: zookeeper-example
+  resources:
+  - https://raw.githubusercontent.com/kubernetes/website/main/content/en/examples/application/zookeeper/zookeeper.yaml

@@ -1,0 +1,143 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app.kubernetes.io/component: configsvr
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: mongodb-sharded
+    helm.sh/chart: mongodb-sharded-4.0.1
+  name: RELEASE-NAME-mongodb-sharded-configsvr
+spec:
+  podManagementPolicy: OrderedReady
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: configsvr
+      app.kubernetes.io/instance: RELEASE-NAME
+      app.kubernetes.io/name: mongodb-sharded
+  serviceName: RELEASE-NAME-mongodb-sharded-headless
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: configsvr
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: mongodb-sharded
+        helm.sh/chart: mongodb-sharded-4.0.1
+    spec:
+      affinity:
+        nodeAffinity: null
+        podAffinity: null
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/component: configsvr
+                  app.kubernetes.io/instance: RELEASE-NAME
+                  app.kubernetes.io/name: mongodb-sharded
+              namespaces:
+              - default
+              topologyKey: kubernetes.io/hostname
+            weight: 1
+      containers:
+      - command:
+        - /bin/bash
+        - /entrypoint/replicaset-entrypoint.sh
+        env:
+        - name: MONGODB_ENABLE_NUMACTL
+          value: "no"
+        - name: BITNAMI_DEBUG
+          value: "false"
+        - name: MONGODB_SYSTEM_LOG_VERBOSITY
+          value: "0"
+        - name: MONGODB_DISABLE_SYSTEM_LOG
+          value: "no"
+        - name: MONGODB_MAX_TIMEOUT
+          value: "120"
+        - name: MONGODB_SHARDING_MODE
+          value: configsvr
+        - name: MONGODB_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: MONGODB_PORT_NUMBER
+          value: "27017"
+        - name: MONGODB_INITIAL_PRIMARY_HOST
+          value: RELEASE-NAME-mongodb-sharded-configsvr-0.RELEASE-NAME-mongodb-sharded-headless.default.svc.cluster.local
+        - name: MONGODB_REPLICA_SET_NAME
+          value: RELEASE-NAME-mongodb-sharded-configsvr
+        - name: MONGODB_ADVERTISED_HOSTNAME
+          value: $(MONGODB_POD_NAME).RELEASE-NAME-mongodb-sharded-headless.default.svc.cluster.local
+        - name: MONGODB_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: mongodb-root-password
+              name: RELEASE-NAME-mongodb-sharded
+        - name: MONGODB_REPLICA_SET_KEY
+          valueFrom:
+            secretKeyRef:
+              key: mongodb-replica-set-key
+              name: RELEASE-NAME-mongodb-sharded
+        - name: MONGODB_ENABLE_IPV6
+          value: "no"
+        - name: MONGODB_ENABLE_DIRECTORY_PER_DB
+          value: "no"
+        image: docker.io/bitnami/mongodb-sharded:4.4.12-debian-10-r8
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          exec:
+            command:
+            - pgrep
+            - mongod
+          failureThreshold: 6
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        name: mongodb
+        ports:
+        - containerPort: 27017
+          name: mongodb
+        readinessProbe:
+          exec:
+            command:
+            - mongo
+            - --disableImplicitSessions
+            - --eval
+            - db.adminCommand('ping')
+          failureThreshold: 6
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        resources: {}
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+        volumeMounts:
+        - mountPath: /entrypoint
+          name: replicaset-entrypoint-configmap
+        - mountPath: /bitnami/mongodb
+          name: datadir
+      initContainers: null
+      securityContext:
+        fsGroup: 1001
+      serviceAccountName: default
+      volumes:
+      - configMap:
+          name: RELEASE-NAME-mongodb-sharded-replicaset-entrypoint
+        name: replicaset-entrypoint-configmap
+  updateStrategy:
+    type: RollingUpdate
+  volumeClaimTemplates:
+  - metadata:
+      annotations: null
+      name: datadir
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 8Gi

@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/component: memcached
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: tempo-distributed
+    app.kubernetes.io/version: 1.3.0
+    helm.sh/chart: tempo-distributed-0.15.1
+  name: RELEASE-NAME-tempo-distributed-memcached
+  namespace: default
+spec:
+  ports:
+  - name: memcached-client
+    port: 11211
+    targetPort: 11211
+  - name: http-metrics
+    port: 9150
+    targetPort: http-metrics
+  selector:
+    app.kubernetes.io/component: memcached
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/name: tempo-distributed

@@ -1,0 +1,12 @@
+apiVersion: v1
+data:
+  SONAR_JDBC_URL: jdbc:postgresql://RELEASE-NAME-postgresql:5432/sonarDB
+  SONAR_JDBC_USERNAME: sonarUser
+kind: ConfigMap
+metadata:
+  labels:
+    app: sonarqube
+    chart: sonarqube-1.2.5_179
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-sonarqube-jdbc-config

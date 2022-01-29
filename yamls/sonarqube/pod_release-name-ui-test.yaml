@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    helm.sh/hook: test-success
+  labels:
+    app: sonarqube
+    chart: sonarqube-1.2.5_179
+    heritage: Helm
+    release: RELEASE-NAME
+  name: RELEASE-NAME-ui-test
+spec:
+  containers:
+  - command:
+    - /tools/bats/bin/bats
+    - --tap
+    - /tests/run.sh
+    image: bitnami/minideb-extras
+    imagePullPolicy: IfNotPresent
+    name: RELEASE-NAME-ui-test
+    resources: {}
+    volumeMounts:
+    - mountPath: /tests
+      name: tests
+      readOnly: true
+    - mountPath: /tools
+      name: tools
+  initContainers:
+  - args:
+    - |-
+      set -ex
+      cp -R /opt/bats /tools/bats/
+    command:
+    - bash
+    - -c
+    image: bats/bats:1.2.1
+    imagePullPolicy: IfNotPresent
+    name: bats
+    resources: {}
+    volumeMounts:
+    - mountPath: /tools
+      name: tools
+  restartPolicy: Never
+  volumes:
+  - configMap:
+      name: RELEASE-NAME-sonarqube-tests
+    name: tests
+  - emptyDir: {}
+    name: tools

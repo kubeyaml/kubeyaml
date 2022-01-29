@@ -1,0 +1,13 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: RELEASE-NAME-argo-workflows-workflow
+  namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: RELEASE-NAME-argo-workflows-workflow
+subjects:
+- kind: ServiceAccount
+  name: argo-workflow
+  namespace: default

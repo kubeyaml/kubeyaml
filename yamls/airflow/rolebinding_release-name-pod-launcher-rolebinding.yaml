@@ -1,0 +1,18 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    chart: airflow-1.4.0
+    heritage: Helm
+    release: RELEASE-NAME
+    tier: airflow
+  name: RELEASE-NAME-pod-launcher-rolebinding
+  namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: RELEASE-NAME-pod-launcher-role
+subjects:
+- kind: ServiceAccount
+  name: RELEASE-NAME-airflow-worker
+  namespace: default

@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations: {}
+  labels:
+    app.kubernetes.io/component: mongos
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: mongodb-sharded
+    helm.sh/chart: mongodb-sharded-4.0.1
+  name: RELEASE-NAME-mongodb-sharded
+spec:
+  ports:
+  - name: mongodb
+    nodePort: null
+    port: 27017
+    targetPort: mongodb
+  selector:
+    app.kubernetes.io/component: mongos
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/name: mongodb-sharded
+  sessionAffinity: None
+  type: ClusterIP

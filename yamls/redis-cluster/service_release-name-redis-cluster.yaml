@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations: null
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: redis-cluster
+    helm.sh/chart: redis-cluster-7.2.1
+  name: RELEASE-NAME-redis-cluster
+  namespace: default
+spec:
+  ports:
+  - name: tcp-redis
+    nodePort: null
+    port: 6379
+    protocol: TCP
+    targetPort: tcp-redis
+  selector:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/name: redis-cluster
+  type: ClusterIP

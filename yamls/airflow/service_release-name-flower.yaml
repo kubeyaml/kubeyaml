@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    chart: airflow-1.4.0
+    component: flower
+    heritage: Helm
+    release: RELEASE-NAME
+    tier: airflow
+  name: RELEASE-NAME-flower
+spec:
+  ports:
+  - name: flower-ui
+    port: 5555
+  selector:
+    component: flower
+    release: RELEASE-NAME
+    tier: airflow
+  type: ClusterIP

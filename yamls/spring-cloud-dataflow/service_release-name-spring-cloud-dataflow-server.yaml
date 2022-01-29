@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations: null
+  labels:
+    app.kubernetes.io/component: server
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: spring-cloud-dataflow
+    helm.sh/chart: spring-cloud-dataflow-5.0.5
+  name: RELEASE-NAME-spring-cloud-dataflow-server
+  namespace: default
+spec:
+  ports:
+  - name: http
+    nodePort: null
+    port: 8080
+    targetPort: http
+  selector:
+    app.kubernetes.io/component: server
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/name: spring-cloud-dataflow
+  sessionAffinity: None
+  type: ClusterIP
