@@ -9,17 +9,10 @@ for package in packages:
     if package['name'] == package_name:
         break
 
-package_type = 'helmChart'
-if 'type' in package:
-    package_type = package['type']
-# print(package_type)
-
 # set up kustoimzation
 kustomization = {}
-if package_type == 'raw':
-    kustomization['resources'] = [package['repo']]
-elif package_type == 'kustomize':
-    kustomization = {'resources': [package['repo']]}
+if 'resources' in package:
+    kustomization = {'resources': package['resources']}
 else:
     if 'chartName' in package:
         package['name'] = package['chartName']

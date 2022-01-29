@@ -9,8 +9,14 @@ PACKAGES=$(python3 list_packages.py)
 select PACKAGE in $PACKAGES; do
     rm -rf   _temp
     mkdir -p _temp/_rendered
+    
+    # python3 render_pacakge.py $PACKAGE
+    # exit
+
     python3 render_pacakge.py $PACKAGE > _temp/kustomization.yaml
     kubectl kustomize --enable-helm _temp/ -o _temp/_rendered/
+    
+    # exit
 
     cd _temp/_rendered/
     FILES=$(ls *.yaml)

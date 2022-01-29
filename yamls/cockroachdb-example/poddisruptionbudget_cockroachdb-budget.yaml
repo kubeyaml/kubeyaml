@@ -1,0 +1,11 @@
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  labels:
+    app: cockroachdb
+  name: cockroachdb-budget
+spec:
+  minAvailable: 67%
+  selector:
+    matchLabels:
+      app: cockroachdb

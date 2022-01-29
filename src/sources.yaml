@@ -3,20 +3,27 @@
 - name: apertium
   repo: https://helm-charts.wikimedia.org/stable/
 - name: argo-cd
-  repo: https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
-  type: raw
+  resources:
+  - https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 - name: athenz-zms
   repo: https://raw.githubusercontent.com/AthenZ/athenz/master/kubernetes/charts
 - name: athenz-zts
   repo: https://raw.githubusercontent.com/AthenZ/athenz/master/kubernetes/charts
 - name: cassandra
   repo: https://charts.bitnami.com/bitnami
+- name: cassandra-example
+  resources:
+  - https://raw.githubusercontent.com/kubernetes/website/main/content/en/examples/application/cassandra/cassandra-service.yaml
+  - https://raw.githubusercontent.com/kubernetes/website/main/content/en/examples/application/cassandra/cassandra-statefulset.yaml
 - name: cert-manager
   repo: https://charts.jetstack.io
 - name: chartmuseum
   repo: https://chartmuseum.github.io/charts
 - name: cockroachdb
   repo: https://charts.cockroachdb.com/
+- name: cockroachdb-example
+  resources:
+  - https://raw.githubusercontent.com/kubernetes/examples/master/staging/cockroachdb/cockroachdb-statefulset.yaml
 - name: concourse
   repo: https://concourse-charts.storage.googleapis.com/
 - name: consul
@@ -76,8 +83,8 @@
 - name: influxdb
   repo: https://charts.bitnami.com/bitnami
 - name: ingress-nginx
-  repo: https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/baremetal/deploy.yaml
-  type: raw
+  resources:
+  - https://github.com/kubernetes/ingress-nginx.git//deploy/static/provider/baremetal
 - name: istio-base
   chartName: base
   repo: https://istio-release.storage.googleapis.com/charts
@@ -206,9 +213,15 @@
   repo: https://stakater.github.io/stakater-charts
 - name: redmine
   repo: https://charts.bitnami.com/bitnami
+- name: selenium-example
+  resources:
+  - https://raw.githubusercontent.com/kubernetes/examples/master/staging/selenium/selenium-hub-deployment.yaml
+  - https://raw.githubusercontent.com/kubernetes/examples/master/staging/selenium/selenium-hub-svc.yaml
+  - https://raw.githubusercontent.com/kubernetes/examples/master/staging/selenium/selenium-node-chrome-deployment.yaml
+  - https://raw.githubusercontent.com/kubernetes/examples/master/staging/selenium/selenium-node-firefox-deployment.yaml
 - name: selenium-grid
-  repo: https://raw.githubusercontent.com/SeleniumHQ/docker-selenium/trunk/k8s-deployment-full-grid.yaml
-  type: raw
+  resources:
+  - https://raw.githubusercontent.com/SeleniumHQ/docker-selenium/trunk/k8s-deployment-full-grid.yaml
 - name: solr
   repo: https://solr.apache.org/charts
 - name: spark
@@ -232,6 +245,12 @@
       uri: https://github.com/wildfly/quickstart.git
 - name: wordpress
   repo: https://charts.bitnami.com/bitnami
+- name: wordpress-example
+  resources:
+  - https://raw.githubusercontent.com/kubernetes/examples/master/mysql-wordpress-pd/gce-volumes.yaml
+  - https://raw.githubusercontent.com/kubernetes/examples/master/mysql-wordpress-pd/local-volumes.yaml
+  - https://raw.githubusercontent.com/kubernetes/examples/master/mysql-wordpress-pd/mysql-deployment.yaml
+  - https://raw.githubusercontent.com/kubernetes/examples/master/mysql-wordpress-pd/wordpress-deployment.yaml
 - name: xray
   repo: https://charts.jfrog.io
   valuesInline:
