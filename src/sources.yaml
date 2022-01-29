@@ -98,6 +98,13 @@
   repo: https://jupyterhub.github.io/helm-chart/
 - name: k8ssandra
   repo: https://helm.k8ssandra.io/stable
+  valuesInline:
+    cass-operator:
+      enabled: false
+    reaper-operator:
+      enabled: false
+    kube-prometheus-stack:
+      enabled: false
 - name: kafka
   repo: https://charts.bitnami.com/bitnami
 - name: kask
