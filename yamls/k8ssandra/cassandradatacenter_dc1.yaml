@@ -1,0 +1,136 @@
+apiVersion: cassandra.datastax.com/v1beta1
+kind: CassandraDatacenter
+metadata:
+  annotations:
+    reaper.cassandra-reaper.io/instance: RELEASE-NAME-reaper
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: k8ssandra
+    app.kubernetes.io/part-of: k8ssandra-RELEASE-NAME-default
+    helm.sh/chart: k8ssandra-1.4.1
+  name: dc1
+spec:
+  allowMultipleNodesPerWorker: false
+  clusterName: RELEASE-NAME
+  config:
+    cassandra-yaml:
+      allocate_tokens_for_local_replication_factor: 3
+      authenticator: PasswordAuthenticator
+      authorizer: CassandraAuthorizer
+      credentials_update_interval_in_ms: 3600000
+      credentials_validity_in_ms: 3600000
+      num_tokens: 16
+      permissions_update_interval_in_ms: 3600000
+      permissions_validity_in_ms: 3600000
+      role_manager: CassandraRoleManager
+      roles_update_interval_in_ms: 3600000
+      roles_validity_in_ms: 3600000
+    jvm-server-options:
+      additional-jvm-opts:
+      - -Dcassandra.system_distributed_replication_dc_names=dc1
+      - -Dcassandra.system_distributed_replication_per_dc=1
+      - -Dcassandra.allow_alter_rf_during_range_movement=true
+  configBuilderImage: docker.io/datastax/cass-config-builder:1.0.4
+  dockerImageRunsAsCassandra: true
+  managementApiAuth:
+    insecure: {}
+  podTemplateSpec:
+    spec:
+      containers:
+      - env:
+        - name: LOCAL_JMX
+          value: "no"
+        - name: METRIC_FILTERS
+          value: deny:org.apache.cassandra.metrics.Table deny:org.apache.cassandra.metrics.table
+            allow:org.apache.cassandra.metrics.table.live_ss_table_count allow:org.apache.cassandra.metrics.Table.LiveSSTableCount
+            allow:org.apache.cassandra.metrics.table.live_disk_space_used allow:org.apache.cassandra.metrics.table.LiveDiskSpaceUsed
+            allow:org.apache.cassandra.metrics.Table.Pending allow:org.apache.cassandra.metrics.Table.Memtable
+            allow:org.apache.cassandra.metrics.Table.Compaction allow:org.apache.cassandra.metrics.table.read
+            allow:org.apache.cassandra.metrics.table.write allow:org.apache.cassandra.metrics.table.range
+            allow:org.apache.cassandra.metrics.table.coordinator allow:org.apache.cassandra.metrics.table.dropped_mutations
+        name: cassandra
+        securityContext: {}
+      initContainers:
+      - args:
+        - -c
+        - cp -r /etc/cassandra/* /cassandra-base-config/
+        command:
+        - /bin/sh
+        image: k8ssandra/cass-management-api:4.0.1-v0.1.33
+        imagePullPolicy: IfNotPresent
+        name: base-config-init
+        securityContext: {}
+        volumeMounts:
+        - mountPath: /cassandra-base-config/
+          name: cassandra-config
+        - mountPath: /opt/metrics-collector/config/
+          name: cassandra-metrics-coll-config
+        - mountPath: /tmp/
+          name: cassandra-tmp
+        - mountPath: /etc/reaper/
+          name: reaper-config
+      - name: server-config-init
+        securityContext: {}
+      - args:
+        - /bin/sh
+        - -c
+        - echo "$REAPER_JMX_USERNAME $REAPER_JMX_PASSWORD" > /config/jmxremote.password
+          && echo "$SUPERUSER_JMX_USERNAME $SUPERUSER_JMX_PASSWORD" >> /config/jmxremote.password
+        env:
+        - name: REAPER_JMX_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: RELEASE-NAME-reaper-jmx
+        - name: REAPER_JMX_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: RELEASE-NAME-reaper-jmx
+        - name: SUPERUSER_JMX_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: RELEASE-NAME-superuser
+        - name: SUPERUSER_JMX_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: RELEASE-NAME-superuser
+        image: docker.io/busybox:1.33.1
+        imagePullPolicy: IfNotPresent
+        name: jmx-credentials
+        securityContext: {}
+        volumeMounts:
+        - mountPath: /config
+          name: server-config
+      volumes:
+      - emptyDir: {}
+        name: cassandra-config
+      - emptyDir: {}
+        name: cassandra-metrics-coll-config
+      - emptyDir: {}
+        name: cassandra-tmp
+      - emptyDir: {}
+        name: reaper-config
+  racks:
+  - name: default
+  serverImage: k8ssandra/cass-management-api:4.0.1-v0.1.33
+  serverType: cassandra
+  serverVersion: 4.0.1
+  size: 1
+  storageConfig:
+    cassandraDataVolumeClaimSpec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 5Gi
+      storageClassName: standard
+  systemLoggerImage: docker.io/k8ssandra/system-logger:6c64f9c4
+  users:
+  - secretName: RELEASE-NAME-reaper
+    superuser: true
+  - secretName: RELEASE-NAME-stargate
+    superuser: true

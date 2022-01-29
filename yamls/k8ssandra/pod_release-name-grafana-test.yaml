@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    helm.sh/hook: test-success
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/version: 7.5.11
+    helm.sh/chart: grafana-6.17.5
+  name: RELEASE-NAME-grafana-test
+  namespace: default
+spec:
+  containers:
+  - command:
+    - /opt/bats/bin/bats
+    - -t
+    - /tests/run.sh
+    image: bats/bats:v1.4.1
+    imagePullPolicy: IfNotPresent
+    name: RELEASE-NAME-test
+    volumeMounts:
+    - mountPath: /tests
+      name: tests
+      readOnly: true
+  restartPolicy: Never
+  serviceAccountName: RELEASE-NAME-grafana-test
+  volumes:
+  - configMap:
+      name: RELEASE-NAME-grafana-test
+    name: tests

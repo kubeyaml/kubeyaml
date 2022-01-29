@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: reaper-operator
+    app.kubernetes.io/part-of: k8ssandra-RELEASE-NAME-default
+    helm.sh/chart: reaper-operator-0.32.3
+  name: RELEASE-NAME-reaper-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: RELEASE-NAME
+      app.kubernetes.io/name: reaper-operator
+      app.kubernetes.io/part-of: k8ssandra-RELEASE-NAME-default
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: reaper-operator
+        app.kubernetes.io/part-of: k8ssandra-RELEASE-NAME-default
+        helm.sh/chart: reaper-operator-0.32.3
+    spec:
+      containers:
+      - args:
+        - --enable-leader-election
+        command:
+        - /manager
+        env:
+        - name: WATCH_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        image: docker.io/k8ssandra/reaper-operator:v0.3.5
+        imagePullPolicy: IfNotPresent
+        name: reaper-operator
+        resources: {}
+        securityContext:
+          readOnlyRootFilesystem: true
+          runAsGroup: 65534
+          runAsNonRoot: true
+          runAsUser: 65534
+      securityContext: {}
+      serviceAccountName: RELEASE-NAME-reaper-operator
+      terminationGracePeriodSeconds: 10

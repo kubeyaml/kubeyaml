@@ -1,0 +1,27 @@
+apiVersion: reaper.cassandra-reaper.io/v1alpha1
+kind: Reaper
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: k8ssandra
+    app.kubernetes.io/part-of: k8ssandra-RELEASE-NAME-default
+    helm.sh/chart: k8ssandra-1.4.1
+  name: RELEASE-NAME-reaper
+spec:
+  ServiceAccountName: default
+  image: docker.io/thelastpickle/cassandra-reaper:3.0.0
+  podSecurityContext: {}
+  securityContext: {}
+  serverConfig:
+    autoScheduling:
+      enabled: false
+    cassandraBackend:
+      cassandraDatacenter:
+        name: dc1
+      cassandraUserSecretName: RELEASE-NAME-reaper
+      replication:
+        networkTopologyStrategy:
+          dc1: 1
+    jmxUserSecretName: RELEASE-NAME-reaper-jmx
+    storageType: cassandra

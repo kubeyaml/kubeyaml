@@ -1,0 +1,108 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: RELEASE-NAME-dc1-stargate
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: k8ssandra
+    app.kubernetes.io/part-of: k8ssandra-RELEASE-NAME-default
+    helm.sh/chart: k8ssandra-1.4.1
+    release: RELEASE-NAME
+  name: RELEASE-NAME-dc1-stargate
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: RELEASE-NAME-dc1-stargate
+  template:
+    metadata:
+      labels:
+        app: RELEASE-NAME-dc1-stargate
+    spec:
+      containers:
+      - env:
+        - name: JAVA_OPTS
+          value: -XX:+CrashOnOutOfMemoryError -Xms256M -Xmx256M
+        - name: CLUSTER_NAME
+          value: RELEASE-NAME
+        - name: CLUSTER_VERSION
+          value: "4.0"
+        - name: SEED
+          value: RELEASE-NAME-seed-service.default.svc.cluster.local
+        - name: DATACENTER_NAME
+          value: dc1
+        - name: RACK_NAME
+          value: default
+        - name: ENABLE_AUTH
+          value: "true"
+        image: stargateio/stargate-4_0:v1.0.40
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 5
+          httpGet:
+            path: /checker/liveness
+            port: health
+          initialDelaySeconds: 30
+          timeoutSeconds: 10
+        name: RELEASE-NAME-dc1-stargate
+        ports:
+        - containerPort: 8080
+          name: graphql
+          protocol: TCP
+        - containerPort: 8081
+          name: authorization
+          protocol: TCP
+        - containerPort: 8082
+          name: rest
+          protocol: TCP
+        - containerPort: 8084
+          name: health
+          protocol: TCP
+        - containerPort: 8085
+          name: metrics
+          protocol: TCP
+        - containerPort: 8090
+          name: http-schemaless
+          protocol: TCP
+        - containerPort: 9042
+          name: native
+          protocol: TCP
+        - containerPort: 8609
+          name: inter-node-msg
+          protocol: TCP
+        - containerPort: 7000
+          name: intra-node
+          protocol: TCP
+        - containerPort: 7001
+          name: tls-intra-node
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 5
+          httpGet:
+            path: /checker/readiness
+            port: health
+          initialDelaySeconds: 30
+          timeoutSeconds: 10
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 1024Mi
+          requests:
+            cpu: 200m
+            memory: 512Mi
+      initContainers:
+      - args:
+        - -c
+        - |
+          echo "Waiting for all Cassandra nodes in dc1 to finish bootstrapping..."
+          while [ "$(nslookup RELEASE-NAME-dc1-service.default.svc.cluster.local | grep Name | wc -l)" != "1" ]; do
+              sleep 5
+          done
+          echo "Cassandra is ready. Starting Stargate..."
+        command:
+        - sh
+        image: docker.io/alpine:3.12.2
+        imagePullPolicy: IfNotPresent
+        name: wait-for-cassandra
+      serviceAccountName: default

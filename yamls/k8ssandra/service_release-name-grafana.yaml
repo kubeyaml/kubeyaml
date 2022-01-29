@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/version: 7.5.11
+    helm.sh/chart: grafana-6.17.5
+  name: RELEASE-NAME-grafana
+  namespace: default
+spec:
+  ports:
+  - name: service
+    port: 80
+    protocol: TCP
+    targetPort: 3000
+  selector:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/name: grafana
+  type: ClusterIP
