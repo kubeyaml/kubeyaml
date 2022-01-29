@@ -98,6 +98,8 @@
   repo: https://jupyterhub.github.io/helm-chart/
 - name: kafka
   repo: https://charts.bitnami.com/bitnami
+- name: kask
+  repo: https://helm-charts.wikimedia.org/stable/
 - name: keycloak
   repo: https://charts.bitnami.com/bitnami
 - name: kibana
