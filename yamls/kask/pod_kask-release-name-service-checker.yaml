@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+  name: kask-RELEASE-NAME-service-checker
+spec:
+  containers:
+  - args:
+    - -t
+    - "5"
+    - -s
+    - /openapi
+    - $(KASK_RELEASE_NAME_SERVICE_HOST)
+    - http://kask-RELEASE-NAME:8081
+    image: docker-registry.wikimedia.org/service-checker
+    imagePullPolicy: IfNotPresent
+    name: kask-RELEASE-NAME-service-checker
+  dnsPolicy: ClusterFirst
+  restartPolicy: Never

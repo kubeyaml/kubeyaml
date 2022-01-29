@@ -1,0 +1,26 @@
+apiVersion: v1
+data:
+  config.yaml: |-
+    base_uri: kask/v1
+    cassandra:
+      hosts:
+        - RELEASE-NAME-cassandra
+      authentication:
+        password: cassandra
+        username: cassandra
+      keyspace: kask
+      table: values
+    default_ttl: 86400
+    listen_address: 0.0.0.0
+    listen_port: 8081
+    service_name: kask
+    log_level: info
+    openapi_spec: openapi.yaml
+kind: ConfigMap
+metadata:
+  labels:
+    app: kask
+    chart: kask-0.1.1
+    heritage: Helm
+    release: RELEASE-NAME
+  name: config-RELEASE-NAME

@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: kask
+    chart: kask-0.1.1
+    heritage: Helm
+    release: RELEASE-NAME
+  name: kask-RELEASE-NAME
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kask
+      release: RELEASE-NAME
+  template:
+    metadata:
+      annotations:
+        checksum/config: a02a6eb541b3e1f45787f6ab7fee6b5a0fb6e98b0c55f91c5345866de6f703c1
+        prometheus.io/port: "8081"
+        prometheus.io/scrape: "true"
+      labels:
+        app: kask
+        release: RELEASE-NAME
+        routed_via: RELEASE-NAME
+    spec:
+      containers:
+      - args:
+        - --config
+        - /etc/kask/config.yaml
+        command:
+        - ./kask
+        env:
+        - name: SERVICE_IDENTIFIER
+          value: kask-RELEASE-NAME
+        image: docker-registry.wikimedia.org/wikimedia/mediawiki-services-kask:latest
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          tcpSocket:
+            port: 8081
+        name: kask-RELEASE-NAME
+        ports:
+        - containerPort: 8081
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+        resources:
+          limits:
+            cpu: 150m
+            memory: 50Mi
+          requests:
+            cpu: 150m
+            memory: 50Mi
+        volumeMounts:
+        - mountPath: /etc/kask
+          name: config-volume
+      volumes:
+      - configMap:
+          name: config-RELEASE-NAME
+        name: config-volume
