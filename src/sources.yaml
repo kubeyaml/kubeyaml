@@ -208,7 +208,6 @@
 - name: mysql-example
   resources:
   - https://raw.githubusercontent.com/kubernetes/website/main/content/en/examples/application/mysql/mysql-configmap.yaml
-  - https://raw.githubusercontent.com/kubernetes/website/main/content/en/examples/application/mysql/mysql-pv.yaml
   - https://raw.githubusercontent.com/kubernetes/website/main/content/en/examples/application/mysql/mysql-services.yaml
   - https://raw.githubusercontent.com/kubernetes/website/main/content/en/examples/application/mysql/mysql-statefulset.yaml
 - name: nats
