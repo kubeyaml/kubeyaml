@@ -1,0 +1,11 @@
+apiVersion: v1
+data:
+  90-shellbox.conf: SetEnvIf Request_URI . SHELLBOX_SECRET_KEY=@@ CHANGE THIS @@
+kind: ConfigMap
+metadata:
+  labels:
+    app: shellbox
+    chart: shellbox-1.0.1
+    heritage: Helm
+    release: RELEASE-NAME
+  name: shellbox-RELEASE-NAME-shellbox-httpd-config

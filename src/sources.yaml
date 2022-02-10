@@ -269,6 +269,8 @@
 - name: selenium-grid
   resources:
   - https://raw.githubusercontent.com/SeleniumHQ/docker-selenium/trunk/k8s-deployment-full-grid.yaml
+- name: shellbox
+  repo: https://helm-charts.wikimedia.org/stable/
 - name: solr
   repo: https://solr.apache.org/charts
 - name: sonarqube

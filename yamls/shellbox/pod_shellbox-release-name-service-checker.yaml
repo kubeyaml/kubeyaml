@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+  name: shellbox-RELEASE-NAME-service-checker
+spec:
+  containers:
+  - args:
+    - -t
+    - "5"
+    - $(SHELLBOX_RELEASE_NAME_SERVICE_HOST)
+    - http://shellbox-RELEASE-NAME:8080
+    image: docker-registry.wikimedia.org/service-checker
+    imagePullPolicy: IfNotPresent
+    name: shellbox-RELEASE-NAME-service-checker
+  dnsPolicy: ClusterFirst
+  restartPolicy: Never

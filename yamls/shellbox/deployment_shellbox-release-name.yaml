@@ -1,0 +1,137 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: shellbox
+    chart: shellbox-1.0.1
+    heritage: Helm
+    release: RELEASE-NAME
+  name: shellbox-RELEASE-NAME
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shellbox
+      release: RELEASE-NAME
+  template:
+    metadata:
+      annotations:
+        checksum/apache: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
+        checksum/prometheus-statsd: 05c9753b286b2422d13f490acd3b0500f25b041ad1aee12e3d5f5bcc5a5ae6ff
+        checksum/secrets: f66b58ef4876976f7647398f45e9566bd4c8557cce1492dff622da2a28996482
+        prometheus.io/scrape: "true"
+      labels:
+        app: shellbox
+        release: RELEASE-NAME
+        routed_via: RELEASE-NAME
+    spec:
+      containers:
+      - env:
+        - name: FCGI_MODE
+          value: FCGI_TCP
+        - name: SERVERGROUP
+          value: main
+        - name: APACHE_RUN_PORT
+          value: "8080"
+        image: docker-registry.wikimedia.org/httpd-fcgi:2.4.38-4
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          tcpSocket:
+            port: 8080
+        name: shellbox-RELEASE-NAME-httpd
+        ports:
+        - containerPort: 8080
+          name: httpd
+        - containerPort: 9181
+          name: php-metrics
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: php-metrics
+        resources:
+          limits:
+            cpu: 1
+            memory: 400Mi
+          requests:
+            cpu: 200m
+            memory: 200Mi
+        volumeMounts:
+        - mountPath: /etc/apache2/conf-enabled/90-shellbox.conf
+          name: shellbox-httpd-config
+          readOnly: true
+          subPath: 90-shellbox.conf
+      - env:
+        - name: SERVERGROUP
+          value: main
+        - name: FCGI_MODE
+          value: FCGI_TCP
+        - name: PHP__opcache__memory_consumption
+          value: "200"
+        - name: PHP__opcache__max_accelerated_files
+          value: "1000"
+        - name: FPM__request_slowlog_timeout
+          value: "0"
+        - name: FPM__request_terminate_timeout
+          value: "60"
+        - name: PHP__apc__shm_size
+          value: 200M
+        - name: FPM__pm__max_children
+          value: "2"
+        - name: FCGI_URL
+          value: 0.0.0.0:9000
+        - name: FCGI_ALLOW
+          value: 127.0.0.1
+        image: docker-registry.wikimedia.org/wikimedia/mediawiki-libs-shellbox:score
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          initialDelaySeconds: 1
+          periodSeconds: 5
+          tcpSocket:
+            port: 9000
+        name: shellbox-RELEASE-NAME-app
+        resources:
+          limits:
+            cpu: 1
+            memory: 2048Mi
+          requests:
+            cpu: 100m
+            memory: 1024Mi
+        volumeMounts:
+        - mountPath: /srv/app/config
+          name: shellbox-config
+          readOnly: true
+      - args:
+        - -scrape_uri
+        - http://127.0.0.1:9181/server-status?auto
+        image: docker-registry.wikimedia.org/prometheus-apache-exporter:0.0.3
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          tcpSocket:
+            port: 9117
+        name: shellbox-RELEASE-NAME-httpd-exporter
+        ports:
+        - containerPort: 9117
+          name: httpd-metrics
+      - args:
+        - --endpoint=http://127.0.0.1:9181/fpm-status
+        - --addr=0.0.0.0:9118
+        image: docker-registry.wikimedia.org/prometheus-php-fpm-exporter:0.0.2
+        livenessProbe:
+          tcpSocket:
+            port: 9118
+        name: shellbox-RELEASE-NAME-php-fpm-exporter
+        ports:
+        - containerPort: 9118
+          name: fpm-metrics
+      volumes:
+      - emptyDir: {}
+        name: shared-socket
+      - configMap:
+          name: shellbox-RELEASE-NAME-metrics-config
+        name: RELEASE-NAME-metrics-exporter
+      - configMap:
+          name: shellbox-RELEASE-NAME-shellbox-config
+        name: shellbox-config
+      - configMap:
+          name: shellbox-RELEASE-NAME-shellbox-httpd-config
+        name: shellbox-httpd-config
