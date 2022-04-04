@@ -1,0 +1,14 @@
+allowVolumeExpansion: true
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  labels:
+    app: nfs-server-provisioner
+    chart: nfs-server-provisioner-1.4.0
+    heritage: Helm
+    release: RELEASE-NAME
+  name: nfs
+mountOptions:
+- vers=3
+provisioner: cluster.local/RELEASE-NAME-nfs-server-provisioner
+reclaimPolicy: Delete
