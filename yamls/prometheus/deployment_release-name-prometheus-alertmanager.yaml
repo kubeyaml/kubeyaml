@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   labels:
     app: prometheus
-    chart: prometheus-15.1.1
+    chart: prometheus-15.8.5
     component: alertmanager
     heritage: Helm
     release: RELEASE-NAME
@@ -20,7 +20,7 @@ spec:
     metadata:
       labels:
         app: prometheus
-        chart: prometheus-15.1.1
+        chart: prometheus-15.8.5
         component: alertmanager
         heritage: Helm
         release: RELEASE-NAME

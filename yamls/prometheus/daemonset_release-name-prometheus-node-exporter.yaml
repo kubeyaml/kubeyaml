@@ -3,7 +3,7 @@ kind: DaemonSet
 metadata:
   labels:
     app: prometheus
-    chart: prometheus-15.1.1
+    chart: prometheus-15.8.5
     component: node-exporter
     heritage: Helm
     release: RELEASE-NAME
@@ -19,7 +19,7 @@ spec:
     metadata:
       labels:
         app: prometheus
-        chart: prometheus-15.1.1
+        chart: prometheus-15.8.5
         component: node-exporter
         heritage: Helm
         release: RELEASE-NAME
@@ -38,6 +38,8 @@ spec:
           hostPort: 9100
           name: metrics
         resources: {}
+        securityContext:
+          allowPrivilegeEscalation: false
         volumeMounts:
         - mountPath: /host/proc
           name: proc
