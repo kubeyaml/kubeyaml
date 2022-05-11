@@ -4,15 +4,14 @@ metadata:
   labels:
     app.kubernetes.io/instance: RELEASE-NAME
     app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/name: fluent-bit
-    app.kubernetes.io/version: 1.9.3
-    helm.sh/chart: fluent-bit-0.20.0
-  name: RELEASE-NAME-fluent-bit
+    app.kubernetes.io/name: kubernetes-event-exporter
+    helm.sh/chart: kubernetes-event-exporter-1.4.7
+  name: RELEASE-NAME-kubernetes-event-exporter
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: RELEASE-NAME-fluent-bit
+  name: view
 subjects:
 - kind: ServiceAccount
-  name: RELEASE-NAME-fluent-bit
+  name: RELEASE-NAME-kubernetes-event-exporter
   namespace: default

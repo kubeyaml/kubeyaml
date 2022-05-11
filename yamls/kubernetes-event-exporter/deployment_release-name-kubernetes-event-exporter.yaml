@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: kubernetes-event-exporter
+    helm.sh/chart: kubernetes-event-exporter-1.4.7
+  name: RELEASE-NAME-kubernetes-event-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: RELEASE-NAME
+      app.kubernetes.io/name: kubernetes-event-exporter
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        checksum/config: 5be5e2392efc96dffe89fc19cc7e1c60c708158711d2fed98b165cbf99c376df
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: kubernetes-event-exporter
+        helm.sh/chart: kubernetes-event-exporter-1.4.7
+    spec:
+      affinity:
+        nodeAffinity: null
+        podAffinity: null
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: RELEASE-NAME
+                  app.kubernetes.io/name: kubernetes-event-exporter
+              namespaces:
+              - default
+              topologyKey: kubernetes.io/hostname
+            weight: 1
+      containers:
+      - args:
+        - -conf=/data/config.yaml
+        image: docker.io/bitnami/kubernetes-event-exporter:0.11.0-debian-10-r145
+        imagePullPolicy: IfNotPresent
+        name: event-exporter
+        resources:
+          limits: {}
+          requests: {}
+        securityContext:
+          capabilities:
+            add: []
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1001
+        volumeMounts:
+        - mountPath: /data
+          name: cfg
+      securityContext:
+        fsGroup: 1001
+      serviceAccountName: RELEASE-NAME-kubernetes-event-exporter
+      volumes:
+      - configMap:
+          name: RELEASE-NAME-kubernetes-event-exporter
+        name: cfg

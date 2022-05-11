@@ -5,8 +5,8 @@ metadata:
     app.kubernetes.io/instance: RELEASE-NAME
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: fluent-bit
-    app.kubernetes.io/version: 1.8.12
-    helm.sh/chart: fluent-bit-0.19.18
+    app.kubernetes.io/version: 1.9.3
+    helm.sh/chart: fluent-bit-0.20.0
   name: RELEASE-NAME-fluent-bit
 spec:
   selector:
@@ -16,14 +16,14 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 4c3fddd696be168ddfa12321a1c40f6bba4e3958d141615a7962fe538cfc2b04
+        checksum/config: f135d99a177ce44bd459235a9bc35157501a86f571429084d41394a61a865f09
         checksum/luascripts: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       labels:
         app.kubernetes.io/instance: RELEASE-NAME
         app.kubernetes.io/name: fluent-bit
     spec:
       containers:
-      - image: fluent/fluent-bit:1.8.12
+      - image: cr.fluentbit.io/fluent/fluent-bit:1.9.3
         imagePullPolicy: Always
         livenessProbe:
           httpGet:

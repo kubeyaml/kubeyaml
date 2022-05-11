@@ -150,6 +150,8 @@
   repo: https://prometheus-community.github.io/helm-charts
 - name: kubernetes-dashboard
   repo: https://kubernetes.github.io/dashboard/
+- name: kubernetes-event-exporter
+  repo: https://charts.bitnami.com/bitnami
 - name: logstash
   repo: https://helm.elastic.co
 - name: loki
