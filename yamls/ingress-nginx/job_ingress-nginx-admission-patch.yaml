@@ -1,16 +1,12 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  annotations:
-    helm.sh/hook: post-install,post-upgrade
-    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
   labels:
     app.kubernetes.io/component: admission-webhook
     app.kubernetes.io/instance: ingress-nginx
-    app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: ingress-nginx
-    app.kubernetes.io/version: 1.1.1
-    helm.sh/chart: ingress-nginx-4.0.15
+    app.kubernetes.io/part-of: ingress-nginx
+    app.kubernetes.io/version: 1.2.0
   name: ingress-nginx-admission-patch
   namespace: ingress-nginx
 spec:
@@ -19,10 +15,9 @@ spec:
       labels:
         app.kubernetes.io/component: admission-webhook
         app.kubernetes.io/instance: ingress-nginx
-        app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: ingress-nginx
-        app.kubernetes.io/version: 1.1.1
-        helm.sh/chart: ingress-nginx-4.0.15
+        app.kubernetes.io/part-of: ingress-nginx
+        app.kubernetes.io/version: 1.2.0
       name: ingress-nginx-admission-patch
     spec:
       containers:
@@ -47,6 +42,7 @@ spec:
         kubernetes.io/os: linux
       restartPolicy: OnFailure
       securityContext:
+        fsGroup: 2000
         runAsNonRoot: true
         runAsUser: 2000
       serviceAccountName: ingress-nginx-admission
