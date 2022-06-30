@@ -1,0 +1,105 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: bitbucket
+    app.kubernetes.io/version: 7.21.1
+    helm.sh/chart: bitbucket-1.4.0
+  name: RELEASE-NAME-bitbucket
+spec:
+  podManagementPolicy: OrderedReady
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: RELEASE-NAME
+      app.kubernetes.io/name: bitbucket
+  serviceName: RELEASE-NAME-bitbucket
+  template:
+    metadata:
+      annotations:
+        checksum/config-jvm: 8634d622117c47fb9b6ee17eddb94deee767ab4ea2fda2dd39f32c67a2f549ad
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/name: bitbucket
+    spec:
+      containers:
+      - env:
+        - name: KUBE_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: JAVA_OPTS
+          value: -Dcluster.node.name=$(KUBE_POD_NAME)
+        - name: SERVER_CONTEXT_PATH
+          value: /
+        - name: SERVER_SCHEME
+          value: https
+        - name: SERVER_SECURE
+          value: "true"
+        - name: SET_PERMISSIONS
+          value: "true"
+        - name: JVM_MINIMUM_MEMORY
+          valueFrom:
+            configMapKeyRef:
+              key: min_heap
+              name: RELEASE-NAME-bitbucket-jvm-config
+        - name: JVM_MAXIMUM_MEMORY
+          valueFrom:
+            configMapKeyRef:
+              key: max_heap
+              name: RELEASE-NAME-bitbucket-jvm-config
+        - name: JVM_SUPPORT_RECOMMENDED_ARGS
+          valueFrom:
+            configMapKeyRef:
+              key: additional_jvm_args
+              name: RELEASE-NAME-bitbucket-jvm-config
+        - name: APPLICATION_MODE
+          value: default
+        image: atlassian/bitbucket:7.21.1
+        imagePullPolicy: IfNotPresent
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - sh
+              - -c
+              - /shutdown-wait.sh
+        name: bitbucket
+        ports:
+        - containerPort: 7990
+          name: http
+          protocol: TCP
+        - containerPort: 7999
+          name: ssh
+          protocol: TCP
+        - containerPort: 5701
+          name: hazelcast
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 60
+          httpGet:
+            path: /status
+            port: 7990
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        resources:
+          requests:
+            cpu: "2"
+            memory: 2G
+        volumeMounts:
+        - mountPath: /var/atlassian/application-data/bitbucket
+          name: local-home
+      initContainers: null
+      securityContext:
+        fsGroup: 2003
+      serviceAccountName: RELEASE-NAME-bitbucket
+      terminationGracePeriodSeconds: 35
+      volumes:
+      - emptyDir: {}
+        name: local-home
+  updateStrategy:
+    rollingUpdate:
+      partition: 0
+    type: RollingUpdate

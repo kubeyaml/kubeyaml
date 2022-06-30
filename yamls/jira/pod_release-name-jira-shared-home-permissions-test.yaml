@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: jira
+    app.kubernetes.io/version: 8.20.9
+    helm.sh/chart: jira-1.4.1
+  name: RELEASE-NAME-jira-shared-home-permissions-test
+spec:
+  containers:
+  - command:
+    - /bin/sh
+    - -ec
+    - |
+      ls -ld /shared-home
+      echo "Creating temporary file in shared home as user $(id -u):$(id -g)"
+      touch /shared-home/permissions-test
+      ls -l /shared-home/permissions-test
+      rm /shared-home/permissions-test
+    image: debian:stable-slim
+    imagePullPolicy: IfNotPresent
+    name: test
+    securityContext:
+      runAsGroup: 2001
+      runAsUser: 2001
+    volumeMounts:
+    - mountPath: /shared-home
+      name: shared-home
+  restartPolicy: Never
+  volumes:
+  - emptyDir: {}
+    name: shared-home

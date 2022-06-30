@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: bamboo-agent
+    app.kubernetes.io/version: 8.2.3
+    helm.sh/chart: bamboo-agent-1.4.0
+  name: RELEASE-NAME-bamboo-agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: RELEASE-NAME
+      app.kubernetes.io/name: bamboo-agent
+  template:
+    metadata:
+      annotations:
+        checksum/config-jvm: e3c96bd0c3b3caea7e60926c5be8cc3ac8594e4c55497b44819583cf9f37fb3e
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/name: bamboo-agent
+    spec:
+      containers:
+      - env:
+        - name: BAMBOO_SERVER
+          value: null
+        - name: WRAPPER_JAVA_INITMEMORY
+          valueFrom:
+            configMapKeyRef:
+              key: min_heap
+              name: RELEASE-NAME-bamboo-agent-jvm-config
+        - name: WRAPPER_JAVA_MAXMEMORY
+          valueFrom:
+            configMapKeyRef:
+              key: max_heap
+              name: RELEASE-NAME-bamboo-agent-jvm-config
+        image: atlassian/bamboo-agent-base:8.2.3
+        imagePullPolicy: IfNotPresent
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - sh
+              - -c
+              - /shutdown-wait.sh
+        name: bamboo-agent
+        readinessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - /probe-readiness.sh
+          failureThreshold: 30
+          initialDelaySeconds: 1
+          periodSeconds: 5
+        resources:
+          requests:
+            cpu: "1"
+            memory: 2G
+        startupProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - /probe-startup.sh
+          failureThreshold: 120
+          initialDelaySeconds: 1
+          periodSeconds: 1
+      initContainers: null
+      securityContext:
+        fsGroup: 2005
+      serviceAccountName: RELEASE-NAME-bamboo-agent
+      terminationGracePeriodSeconds: 30

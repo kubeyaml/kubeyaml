@@ -1,0 +1,118 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: confluence
+    app.kubernetes.io/version: 7.13.7
+    helm.sh/chart: confluence-1.4.1
+  name: RELEASE-NAME-confluence
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: RELEASE-NAME
+      app.kubernetes.io/name: confluence
+  serviceName: RELEASE-NAME-confluence
+  template:
+    metadata:
+      annotations:
+        checksum/config-jvm: e8dffbcf91329815a46622d7e7815c632df0dd7be1034e5a4a89596e676e2812
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/name: confluence
+    spec:
+      containers:
+      - env:
+        - name: ATL_TOMCAT_SCHEME
+          value: https
+        - name: ATL_TOMCAT_SECURE
+          value: "true"
+        - name: ATL_TOMCAT_ACCESS_LOG
+          value: "true"
+        - name: UMASK
+          value: "0022"
+        - name: SET_PERMISSIONS
+          value: "true"
+        - name: ATL_PRODUCT_HOME_SHARED
+          value: /var/atlassian/application-data/shared-home
+        - name: JVM_SUPPORT_RECOMMENDED_ARGS
+          valueFrom:
+            configMapKeyRef:
+              key: additional_jvm_args
+              name: RELEASE-NAME-confluence-jvm-config
+        - name: JVM_MINIMUM_MEMORY
+          valueFrom:
+            configMapKeyRef:
+              key: min_heap
+              name: RELEASE-NAME-confluence-jvm-config
+        - name: JVM_MAXIMUM_MEMORY
+          valueFrom:
+            configMapKeyRef:
+              key: max_heap
+              name: RELEASE-NAME-confluence-jvm-config
+        - name: JVM_RESERVED_CODE_CACHE_SIZE
+          valueFrom:
+            configMapKeyRef:
+              key: reserved_code_cache
+              name: RELEASE-NAME-confluence-jvm-config
+        image: atlassian/confluence:7.13.7
+        imagePullPolicy: IfNotPresent
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - sh
+              - -c
+              - /shutdown-wait.sh
+        name: confluence
+        ports:
+        - containerPort: 8090
+          name: http
+          protocol: TCP
+        - containerPort: 5701
+          name: hazelcast
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 6
+          httpGet:
+            path: /status
+            port: 8090
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        resources:
+          requests:
+            cpu: "2"
+            memory: 2G
+        volumeMounts:
+        - mountPath: /var/atlassian/application-data/confluence
+          name: local-home
+        - mountPath: /opt/atlassian/confluence/logs
+          name: local-home
+          subPath: logs
+        - mountPath: /var/atlassian/application-data/shared-home
+          name: shared-home
+      hostAliases: null
+      initContainers:
+      - command:
+        - sh
+        - -c
+        - (chgrp 2002 /shared-home; chmod g+w /shared-home)
+        image: alpine
+        imagePullPolicy: IfNotPresent
+        name: nfs-permission-fixer
+        securityContext:
+          runAsUser: 0
+        volumeMounts:
+        - mountPath: /shared-home
+          name: shared-home
+      securityContext:
+        fsGroup: 2002
+      serviceAccountName: RELEASE-NAME-confluence
+      terminationGracePeriodSeconds: 25
+      volumes:
+      - emptyDir: {}
+        name: local-home
+      - emptyDir: {}
+        name: shared-home

@@ -1,0 +1,15 @@
+apiVersion: v1
+data:
+  additional_jvm_args: -Datlassian.logging.cloud.enabled=false -XX:ActiveProcessorCount=2
+  max_heap: 768m
+  min_heap: 384m
+  reserved_code_cache: 512m
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: jira
+    app.kubernetes.io/version: 8.20.9
+    helm.sh/chart: jira-1.4.1
+  name: RELEASE-NAME-jira-jvm-config

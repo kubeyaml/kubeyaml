@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: bitbucket
+    app.kubernetes.io/version: 7.21.1
+    helm.sh/chart: bitbucket-1.4.0
+  name: RELEASE-NAME-bitbucket-shared-home-permissions-test
+spec:
+  containers:
+  - command:
+    - /bin/sh
+    - -ec
+    - |
+      ls -ld /shared-home
+      echo "Creating temporary file in shared home as user $(id -u):$(id -g)"
+      touch /shared-home/permissions-test
+      ls -l /shared-home/permissions-test
+      rm /shared-home/permissions-test
+    image: debian:stable-slim
+    imagePullPolicy: IfNotPresent
+    name: test
+    securityContext:
+      runAsGroup: 2003
+      runAsUser: 2003
+    volumeMounts:
+    - mountPath: /shared-home
+      name: local-home
+      subPath: shared
+  restartPolicy: Never
+  volumes:
+  - emptyDir: {}
+    name: local-home

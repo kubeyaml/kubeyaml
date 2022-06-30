@@ -1,0 +1,14 @@
+apiVersion: v1
+data:
+  additional_jvm_args: -XX:ActiveProcessorCount=2
+  max_heap: 1g
+  min_heap: 512m
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: bitbucket
+    app.kubernetes.io/version: 7.21.1
+    helm.sh/chart: bitbucket-1.4.0
+  name: RELEASE-NAME-bitbucket-jvm-config

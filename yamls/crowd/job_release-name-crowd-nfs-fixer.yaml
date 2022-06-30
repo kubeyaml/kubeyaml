@@ -1,0 +1,40 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    helm.sh/hook: pre-install
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: crowd
+    app.kubernetes.io/version: 5.0.0
+    helm.sh/chart: crowd-1.4.0
+  name: RELEASE-NAME-crowd-nfs-fixer
+spec:
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: crowd
+        app.kubernetes.io/version: 5.0.0
+        helm.sh/chart: crowd-1.4.0
+      name: RELEASE-NAME-crowd-nfs-fixer
+    spec:
+      containers:
+      - command:
+        - sh
+        - -c
+        - (chgrp 2004 /shared-home; chmod g+w /shared-home)
+        image: alpine
+        name: nfs-fixer
+        securityContext:
+          runAsUser: 0
+        volumeMounts:
+        - mountPath: /shared-home
+          name: shared-home
+      restartPolicy: Never
+      volumes:
+      - emptyDir: {}
+        name: shared-home

@@ -1,0 +1,116 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: bamboo
+    app.kubernetes.io/version: 8.2.3
+    helm.sh/chart: bamboo-1.4.0
+  name: RELEASE-NAME-bamboo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: RELEASE-NAME
+      app.kubernetes.io/name: bamboo
+  serviceName: RELEASE-NAME-bamboo
+  template:
+    metadata:
+      annotations:
+        checksum/config-jvm: ca76fd9e7366c32097b1d9a2489787210b71b2385a120350d495ea7fce0cd414
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/name: bamboo
+    spec:
+      containers:
+      - env:
+        - name: ATL_TOMCAT_SCHEME
+          value: https
+        - name: ATL_TOMCAT_SECURE
+          value: "true"
+        - name: ATL_BASE_URL
+          value: http://localhost:8085/
+        - name: SET_PERMISSIONS
+          value: "true"
+        - name: BAMBOO_SHARED_HOME
+          value: /var/atlassian/application-data/shared-home
+        - name: JVM_SUPPORT_RECOMMENDED_ARGS
+          valueFrom:
+            configMapKeyRef:
+              key: additional_jvm_args
+              name: RELEASE-NAME-bamboo-jvm-config
+        - name: JVM_MINIMUM_MEMORY
+          valueFrom:
+            configMapKeyRef:
+              key: min_heap
+              name: RELEASE-NAME-bamboo-jvm-config
+        - name: JVM_MAXIMUM_MEMORY
+          valueFrom:
+            configMapKeyRef:
+              key: max_heap
+              name: RELEASE-NAME-bamboo-jvm-config
+        - name: ATL_IMPORT_OPTION
+          value: clean
+        - name: ATL_IMPORT_PATH
+          value: null
+        - name: ATL_BAMBOO_ENABLE_UNATTENDED_SETUP
+          value: "true"
+        image: atlassian/bamboo:8.2.3
+        imagePullPolicy: IfNotPresent
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - sh
+              - -c
+              - /shutdown-wait.sh
+        name: bamboo
+        ports:
+        - containerPort: 8085
+          name: http
+          protocol: TCP
+        - containerPort: 54663
+          name: jms
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 30
+          httpGet:
+            path: /rest/api/latest/status
+            port: 8085
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        resources:
+          requests:
+            cpu: "2"
+            memory: 2G
+        volumeMounts:
+        - mountPath: /var/atlassian/application-data/bamboo
+          name: local-home
+        - mountPath: /opt/atlassian/bamboo/logs
+          name: local-home
+          subPath: log
+        - mountPath: /var/atlassian/application-data/shared-home
+          name: shared-home
+      initContainers:
+      - command:
+        - sh
+        - -c
+        - (chgrp 2005 /shared-home; chmod g+w /shared-home)
+        image: alpine
+        imagePullPolicy: IfNotPresent
+        name: nfs-permission-fixer
+        securityContext:
+          runAsUser: 0
+        volumeMounts:
+        - mountPath: /shared-home
+          name: shared-home
+      securityContext:
+        fsGroup: 2005
+      serviceAccountName: RELEASE-NAME-bamboo
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - emptyDir: {}
+        name: local-home
+      - emptyDir: {}
+        name: shared-home

@@ -1,0 +1,116 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: jira
+    app.kubernetes.io/version: 8.20.9
+    helm.sh/chart: jira-1.4.1
+  name: RELEASE-NAME-jira
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: RELEASE-NAME
+      app.kubernetes.io/name: jira
+  serviceName: RELEASE-NAME-jira
+  template:
+    metadata:
+      annotations:
+        checksum/config-jvm: 4b0c8e544881923d2ab262316953a3a0ef19b4d1c54341578354fa44200634f0
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/name: jira
+    spec:
+      containers:
+      - env:
+        - name: ATL_TOMCAT_SCHEME
+          value: https
+        - name: ATL_TOMCAT_SECURE
+          value: "true"
+        - name: SET_PERMISSIONS
+          value: "true"
+        - name: JIRA_SHARED_HOME
+          value: /var/atlassian/application-data/shared-home
+        - name: JVM_SUPPORT_RECOMMENDED_ARGS
+          valueFrom:
+            configMapKeyRef:
+              key: additional_jvm_args
+              name: RELEASE-NAME-jira-jvm-config
+        - name: JVM_MINIMUM_MEMORY
+          valueFrom:
+            configMapKeyRef:
+              key: min_heap
+              name: RELEASE-NAME-jira-jvm-config
+        - name: JVM_MAXIMUM_MEMORY
+          valueFrom:
+            configMapKeyRef:
+              key: max_heap
+              name: RELEASE-NAME-jira-jvm-config
+        - name: JVM_RESERVED_CODE_CACHE_SIZE
+          valueFrom:
+            configMapKeyRef:
+              key: reserved_code_cache
+              name: RELEASE-NAME-jira-jvm-config
+        image: atlassian/jira-software:8.20.9
+        imagePullPolicy: IfNotPresent
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - sh
+              - -c
+              - /shutdown-wait.sh
+        name: jira
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        - containerPort: 40001
+          name: ehcache
+          protocol: TCP
+        - containerPort: 40011
+          name: ehcacheobject
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 30
+          httpGet:
+            path: /status
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        resources:
+          requests:
+            cpu: "2"
+            memory: 2G
+        volumeMounts:
+        - mountPath: /var/atlassian/application-data/jira
+          name: local-home
+        - mountPath: /opt/atlassian/jira/logs
+          name: local-home
+          subPath: log
+        - mountPath: /var/atlassian/application-data/shared-home
+          name: shared-home
+      initContainers:
+      - command:
+        - sh
+        - -c
+        - (chgrp 2001 /shared-home; chmod g+w /shared-home)
+        image: alpine
+        imagePullPolicy: IfNotPresent
+        name: nfs-permission-fixer
+        securityContext:
+          runAsUser: 0
+        volumeMounts:
+        - mountPath: /shared-home
+          name: shared-home
+      securityContext:
+        fsGroup: 2001
+      serviceAccountName: RELEASE-NAME-jira
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - emptyDir: {}
+        name: local-home
+      - emptyDir: {}
+        name: shared-home

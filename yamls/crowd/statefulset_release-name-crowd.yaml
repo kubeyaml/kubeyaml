@@ -1,0 +1,112 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: crowd
+    app.kubernetes.io/version: 5.0.0
+    helm.sh/chart: crowd-1.4.0
+  name: RELEASE-NAME-crowd
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: RELEASE-NAME
+      app.kubernetes.io/name: crowd
+  serviceName: RELEASE-NAME-crowd
+  template:
+    metadata:
+      annotations:
+        checksum/config-jvm: d0d1c988fbd0d00d03d5febbd233fc6ebb89012126e2e2a5f2e8b505b370f74c
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/name: crowd
+    spec:
+      containers:
+      - env:
+        - name: ATL_TOMCAT_SCHEME
+          value: https
+        - name: ATL_TOMCAT_SECURE
+          value: "true"
+        - name: ATL_TOMCAT_ACCESS_LOG
+          value: "true"
+        - name: UMASK
+          value: "0022"
+        - name: SET_PERMISSIONS
+          value: "true"
+        - name: ATL_PRODUCT_HOME_SHARED
+          value: /var/atlassian/application-data/crowd/shared
+        - name: JVM_SUPPORT_RECOMMENDED_ARGS
+          valueFrom:
+            configMapKeyRef:
+              key: additional_jvm_args
+              name: RELEASE-NAME-crowd-jvm-config
+        - name: JVM_MINIMUM_MEMORY
+          valueFrom:
+            configMapKeyRef:
+              key: min_heap
+              name: RELEASE-NAME-crowd-jvm-config
+        - name: JVM_MAXIMUM_MEMORY
+          valueFrom:
+            configMapKeyRef:
+              key: max_heap
+              name: RELEASE-NAME-crowd-jvm-config
+        image: atlassian/crowd:4.2.2
+        imagePullPolicy: IfNotPresent
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - sh
+              - -c
+              - /shutdown-wait.sh
+        name: crowd
+        ports:
+        - containerPort: 8095
+          name: http
+          protocol: TCP
+        - containerPort: 5701
+          name: hazelcast
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 30
+          httpGet:
+            path: /
+            port: 8095
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        resources:
+          requests:
+            cpu: "2"
+            memory: 1G
+        volumeMounts:
+        - mountPath: /var/atlassian/application-data/crowd
+          name: local-home
+        - mountPath: /opt/atlassian/crowd/logs
+          name: local-home
+          subPath: logs
+        - mountPath: /var/atlassian/application-data/crowd/shared
+          name: shared-home
+      initContainers:
+      - command:
+        - sh
+        - -c
+        - (chgrp 2004 /shared-home; chmod g+w /shared-home)
+        image: alpine
+        imagePullPolicy: IfNotPresent
+        name: nfs-permission-fixer
+        securityContext:
+          runAsUser: 0
+        volumeMounts:
+        - mountPath: /shared-home
+          name: shared-home
+      securityContext:
+        fsGroup: 2004
+      serviceAccountName: RELEASE-NAME-crowd
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - emptyDir: {}
+        name: local-home
+      - emptyDir: {}
+        name: shared-home

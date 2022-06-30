@@ -1,0 +1,15 @@
+apiVersion: v1
+data:
+  additional_jvm_args: -Dcrowd.cluster.hazelcast.listenPort=5701 -Dcrowd.clusterNodeName.useHostname=true
+    -Datlassian.logging.cloud.enabled=false -XX:ActiveProcessorCount=2
+  max_heap: 768m
+  min_heap: 384m
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: crowd
+    app.kubernetes.io/version: 5.0.0
+    helm.sh/chart: crowd-1.4.0
+  name: RELEASE-NAME-crowd-jvm-config

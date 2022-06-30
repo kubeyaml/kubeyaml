@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+  labels:
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: confluence
+    app.kubernetes.io/version: 7.13.7
+    helm.sh/chart: confluence-1.4.1
+  name: RELEASE-NAME-confluence-application-status-test
+spec:
+  containers:
+  - command:
+    - /bin/sh
+    - -ec
+    - |
+      apk add -q jq curl
+      STATUS=$(curl -s "$STATUS_URL")
+      echo "Verifying application state is RUNNING or FIRST_RUN: $STATUS"
+      echo $STATUS | jq -e '.state|test("RUNNING|FIRST_RUN")'
+    env:
+    - name: STATUS_URL
+      value: http://RELEASE-NAME-confluence:80/status
+    image: alpine
+    name: test
+  restartPolicy: Never

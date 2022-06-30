@@ -16,6 +16,12 @@
   repo: https://raw.githubusercontent.com/AthenZ/athenz/master/kubernetes/charts
 - name: athenz-zts
   repo: https://raw.githubusercontent.com/AthenZ/athenz/master/kubernetes/charts
+- name: bamboo
+  repo: https://atlassian.github.io/data-center-helm-charts
+- name: bamboo-agent
+  repo: https://atlassian.github.io/data-center-helm-charts
+- name: bitbucket
+  repo: https://atlassian.github.io/data-center-helm-charts
 - name: cassandra
   repo: https://charts.bitnami.com/bitnami
 - name: cassandra-example
@@ -33,6 +39,8 @@
   - https://raw.githubusercontent.com/kubernetes/examples/master/staging/cockroachdb/cockroachdb-statefulset.yaml
 - name: concourse
   repo: https://concourse-charts.storage.googleapis.com/
+- name: confluence
+  repo: https://atlassian.github.io/data-center-helm-charts
 - name: consul
   repo: https://helm.releases.hashicorp.com
 - name: contour
@@ -41,6 +49,8 @@
   repo: https://coredns.github.io/helm
 - name: crossplane
   repo: https://charts.crossplane.io/stable
+- name: crowd
+  repo: https://atlassian.github.io/data-center-helm-charts
 - name: dask
   repo: https://helm.dask.org/
 - name: datadog
@@ -114,6 +124,8 @@
   repo: https://charts.jenkins.io
 - name: jfrog-platform
   repo: https://charts.jfrog.io
+- name: jira
+  repo: https://atlassian.github.io/data-center-helm-charts
 - name: jmeter-service
   repo: https://charts.keptn.sh
 - name: joomla
